@@ -45,23 +45,46 @@ export function normalizarUf(uf) {
   return String(uf ?? '').trim().toUpperCase();
 }
 
-/** Preserva os pontos que o advogado digita (12.345), só apara o resto. */
-export function normalizarNumeroOab(numero) {
-  return String(numero ?? '').trim();
+export const OAB_DIGITOS_MIN = 3;
+export const OAB_DIGITOS_MAX = 8;
+
+export const ERRO_OAB = `Número de OAB inválido. Ex: ${'37.189'}`;
+
+/** Só os dígitos, sem zeros à esquerda. "abc37-189/BA" -> "37189" */
+function digitosOab(entrada) {
+  return String(entrada ?? '')
+    .replace(/\D/g, '')
+    .replace(/^0+/, '');
 }
 
+/**
+ * Canoniza o número da OAB: 37189, 37-189 e 37.189 são o mesmo número e
+ * precisam virar a mesma string, porque é ela que sai impressa no rodapé da
+ * petição. Sem isso, o mesmo advogado assinaria de jeitos diferentes conforme
+ * o que digitou no dia da configuração.
+ *
+ * Formata com ponto de milhar na mão (e não com toLocaleString) para não
+ * depender do ICU: um Node compilado sem intl devolveria o número sem pontos.
+ */
+export function normalizarNumeroOab(numero) {
+  const digitos = digitosOab(numero);
+  if (!digitos) return '';
+  return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/** Valida pela quantidade de dígitos, não pela string crua. */
 export function numeroOabValido(numero) {
-  const n = normalizarNumeroOab(numero);
-  return n.length > 0 && /^[\d.\-/]+$/.test(n) && /\d/.test(n);
+  const digitos = digitosOab(numero);
+  return digitos.length >= OAB_DIGITOS_MIN && digitos.length <= OAB_DIGITOS_MAX;
 }
 
 export function oab(uf, numero) {
   return { uf: normalizarUf(uf), numero: normalizarNumeroOab(numero) };
 }
 
-/** Formato humano: "BA 12.345" */
+/** Como a OAB sai impressa na petição: "OAB/BA 37.189" */
 export function oabTexto({ uf, numero }) {
-  return `${uf} ${numero}`;
+  return `OAB/${uf} ${numero}`;
 }
 
 /**

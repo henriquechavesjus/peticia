@@ -8,12 +8,14 @@ import { SUBPASTAS } from '../constants.js';
 import { ALVOS, detectarEstrutura } from '../lib/detectar-pastas.js';
 import {
   CAMPOS_FORMATACAO,
+  ERRO_OAB,
   FORMATACAO_PADRAO,
   montarEscritorio,
   normalizarNumeroOab,
   normalizarUf,
   numeroOabValido,
   oab,
+  oabTexto,
   ufValida,
   validar,
 } from '../lib/escritorio-schema.js';
@@ -110,6 +112,35 @@ async function tratarExistente(destino, agoraIso) {
 
 // --- etapa 1: advogado ---
 
+/**
+ * Pergunta o número de uma OAB cuja UF já é conhecida.
+ *
+ * O transformer faz a linha de confirmação mostrar a OAB exatamente como ela
+ * vai sair impressa na petição ("OAB/BA 37.189") — não o que o aluno digitou.
+ * É isso que torna a canonização visível: se a linha verde está certa, o que
+ * for para o rodapé da peça está certo.
+ */
+async function perguntarNumeroOab(rotulo, uf) {
+  const { numero } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'numero',
+      message: `${rotulo}:`,
+      filter: normalizarNumeroOab,
+      validate: (v) => (numeroOabValido(v) ? true : ERRO_OAB),
+      // O inquirer 12 chama transformer como (valor, { isFinal }); a API antiga
+      // usava (valor, respostas, { isFinal }). Aceitamos as duas para não
+      // depender de um detalhe interno que já mudou uma vez.
+      transformer: (valor, a, b) => {
+        const isFinal = a?.isFinal ?? b?.isFinal ?? false;
+        return isFinal ? oabTexto(oab(uf, valor)) : valor;
+      },
+    },
+  ]);
+
+  return numero;
+}
+
 async function perguntarOab(rotulo) {
   const { uf } = await inquirer.prompt([
     {
@@ -121,17 +152,7 @@ async function perguntarOab(rotulo) {
     },
   ]);
 
-  const { numero } = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'numero',
-      message: `${rotulo} — número (pode usar pontos):`,
-      filter: normalizarNumeroOab,
-      validate: (v) => (numeroOabValido(v) ? true : 'Número inválido. Ex: 12.345'),
-    },
-  ]);
-
-  return oab(uf, numero);
+  return oab(uf, await perguntarNumeroOab(rotulo, uf));
 }
 
 async function etapaAdvogado() {
@@ -172,18 +193,7 @@ async function etapaAdvogado() {
       continue;
     }
 
-    const { numero } = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'numero',
-        message: `Número da OAB ${uf}:`,
-        filter: normalizarNumeroOab,
-        validate: (v) => (numeroOabValido(v) ? true : 'Número inválido. Ex: 12.345'),
-      },
-    ]);
-
-    oabsSuplementares[uf] = numero;
-    ok(`OAB ${uf} ${numero} registrada`);
+    oabsSuplementares[uf] = await perguntarNumeroOab('OAB suplementar', uf);
   }
 
   return { nome, oabPrincipal, oabsSuplementares };
@@ -243,7 +253,7 @@ async function etapaEscritorio() {
         validate: (v) => (v ? true : 'O nome do sócio é obrigatório.'),
       },
     ]);
-    socio = { nome: nomeSocio, oab: await perguntarOab(`OAB de ${nomeSocio}`) };
+    socio = { nome: nomeSocio, oab: await perguntarOab('OAB do sócio') };
   }
 
   return { nome, raiz, assinaturaDupla, socio };

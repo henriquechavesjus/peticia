@@ -17,6 +17,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "test": "node --test test/",
     "peticia": "node bin/peticia.js"
   },
   "keywords": [
