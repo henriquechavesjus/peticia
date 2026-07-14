@@ -4,8 +4,8 @@ import fs from 'fs-extra';
 import inquirer from 'inquirer';
 import ora from 'ora';
 
-import { SUBPASTAS } from '../constants.js';
 import { ALVOS, detectarEstrutura } from '../lib/detectar-pastas.js';
+import { escolherLocal } from '../lib/escolher-local.js';
 import {
   CAMPOS_FORMATACAO,
   ERRO_OAB,
@@ -19,22 +19,16 @@ import {
   ufValida,
   validar,
 } from '../lib/escritorio-schema.js';
+import { criarEstrutura, escreverPonteiro, proteger } from '../lib/instalacao.js';
 import {
   arquivoEnv,
   arquivoEscritorio,
-  arquivoInstalacao,
-  ehWindows,
-  locaisSugeridos,
   normalizarCaminhoColado,
-  pastaConfig,
-  pastaEstado,
   pastaPadrao,
 } from '../lib/paths.js';
 import { aviso, cor, dim, info, ok, passo, secao } from '../lib/ui.js';
 import { validarCaminho } from '../lib/validar-caminho.js';
 import { VERSAO } from '../lib/versao.js';
-
-const CAMINHO_CUSTOMIZADO = Symbol('customizado');
 
 /** Mesma armadilha: validate recebe o texto cru, então trima aqui também. */
 const naoVazio = (mensagem) => (v) => (String(v ?? '').trim() ? true : mensagem);
@@ -53,45 +47,17 @@ const transformarCaminho = (valor, a, b) => {
 // --- etapa 0: onde criar a pasta ---
 
 async function etapaLocal({ sandbox }) {
+  secao('local da pasta');
+
   if (sandbox) {
     const destino = pastaPadrao({ sandbox });
-    secao('local da pasta');
     passo(`Modo sandbox: usando ${destino}`);
     return destino;
   }
 
-  secao('local da pasta');
-  info('Onde você quer criar a pasta principal do peticia?');
-  info('');
-
-  const locais = await locaisSugeridos({ sandbox });
-
-  const { escolha } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'escolha',
-      message: 'Local:',
-      choices: [
-        ...locais.map((l) => ({ name: `${l.nome}  ${cor.fraco(l.caminho)}`, value: l.caminho })),
-        { name: 'Outro caminho (eu digito)', value: CAMINHO_CUSTOMIZADO },
-      ],
-    },
-  ]);
-
-  if (escolha !== CAMINHO_CUSTOMIZADO) return escolha;
-
-  const { customizado } = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'customizado',
-      message: 'Caminho completo da pasta:',
-      filter: normalizarCaminhoColado,
-      validate: (v) => (normalizarCaminhoColado(v) ? true : 'Digite um caminho.'),
-      transformer: transformarCaminho,
-    },
-  ]);
-
-  return customizado;
+  // Mesma pergunta usada pelo `ativar`: se cada comando perguntasse do seu
+  // jeito, o aluno poderia acabar com duas pastas diferentes.
+  return escolherLocal({ sandbox });
 }
 
 /**
@@ -411,32 +377,6 @@ async function etapaOpenai() {
 
 // --- escrita ---
 
-const README = (destino) => `# peticia
-
-Esta é a sua pasta de trabalho do peticia (\`${destino}\`).
-O que você editar aqui é seu: o peticia não sobrescreve suas alterações.
-
-## As pastas
-
-- \`agentes/\` — os agentes que redigem, revisam, organizam e conferem.
-  Depois da instalação, eles são seus: pode editar o texto de cada um.
-- \`workflows/\` — os pipelines que encadeiam os agentes.
-- \`lib/\` — o motor de formatação das peças.
-- \`ferramentas/\` — integrações opcionais (ex: revisão via OpenAI).
-- \`config/\` — sua configuração. O \`escritorio.json\` foi gerado pelo wizard.
-
-## Arquivos sensíveis
-
-- \`.env\` — guarda sua chave da OpenAI, se você configurou uma.
-  Não compartilhe este arquivo e não o coloque em nenhum repositório.
-
-## Para mudar algo
-
-    peticia configurar     refaz a configuração (guarda backup da anterior)
-    peticia editar         abre esta pasta
-    peticia status         mostra o estado da instalação
-`;
-
 /**
  * Grava tudo. Só roda depois que todas as perguntas foram respondidas — assim
  * um Ctrl+C no meio do wizard não deixa meia instalação no disco.
@@ -451,55 +391,21 @@ export async function aplicar({ destino, dados, chaveOpenai, sandbox, agoraIso }
     throw new Error(`configuração inválida:\n  - ${erros.join('\n  - ')}`);
   }
 
-  await fs.ensureDir(destino);
-  for (const sub of SUBPASTAS) {
-    await fs.ensureDir(path.join(destino, sub));
-    await fs.writeFile(path.join(destino, sub, '.gitkeep'), '');
-  }
+  await criarEstrutura(destino);
 
   await fs.writeJson(arquivoEscritorio(destino), escritorioJson, { spaces: 2 });
-  await fs.writeFile(path.join(destino, 'README.md'), README(destino));
 
   if (chaveOpenai) {
     const env = arquivoEnv(destino);
     await fs.writeFile(env, `OPENAI_API_KEY=${chaveOpenai}\n`);
-    await protegerArquivo(env);
+    await proteger(env);
   }
 
-  await protegerArquivo(pastaConfig(destino), 0o700);
-
-  // O ponteiro: é assim que todo comando futuro acha esta pasta.
-  await fs.ensureDir(pastaEstado({ sandbox }));
-  await fs.writeJson(
-    arquivoInstalacao({ sandbox }),
-    {
-      schema_versao: 1,
-      pasta_peticia: destino,
-      criado_em: agoraIso,
-      versao_cli: VERSAO,
-      so: process.platform,
-    },
-    { spaces: 2 },
-  );
+  // O ponteiro: é assim que todo comando futuro acha esta pasta. Escrever por
+  // aqui preserva o que o `ativar` já tiver gravado (email, nome, device_id).
+  await escreverPonteiro(destino, { sandbox }, { criado_em: agoraIso, versao_cli: VERSAO });
 
   return escritorioJson;
-}
-
-/**
- * chmod não tem efeito real no Windows: prometer "600" lá seria mentira.
- * Em vez de fingir, avisamos o aluno uma vez.
- */
-let avisouWindows = false;
-async function protegerArquivo(alvo, modo = 0o600) {
-  if (ehWindows) {
-    if (!avisouWindows) {
-      aviso('no Windows as permissões de arquivo não são restringidas pelo peticia;');
-      aviso('mantenha o .env fora de pastas compartilhadas.');
-      avisouWindows = true;
-    }
-    return;
-  }
-  await fs.chmod(alvo, modo);
 }
 
 // --- saída final ---

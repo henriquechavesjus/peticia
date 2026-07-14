@@ -1,6 +1,7 @@
 import { Option } from 'commander';
 
 import { abortar } from '../lib/ui.js';
+import { ativar } from './ativar.js';
 import { configurar } from './configurar.js';
 import { status } from './status.js';
 
@@ -10,10 +11,6 @@ import { status } from './status.js';
  * implementado, sai desta lista e vira seu próprio módulo.
  */
 const STUBS = [
-  {
-    nome: 'ativar',
-    descricao: 'Instala o peticia e ativa a licença neste dispositivo',
-  },
   {
     nome: 'atualizar',
     descricao: 'Busca novidades e atualiza as partes gerenciadas pelo peticia',
@@ -44,6 +41,15 @@ function sandboxAtivo(programa, comando) {
 }
 
 export function registrarComandos(programa) {
+  programa
+    .command('ativar')
+    .argument('<email>', 'e-mail com que você comprou o curso')
+    .description('Ativa a licença neste dispositivo e cria a pasta do peticia')
+    .addOption(opcaoSandbox())
+    .action(async (email, _opcoes, comando) => {
+      await ativar(email, { sandbox: sandboxAtivo(programa, comando) });
+    });
+
   programa
     .command('configurar')
     .description('Configura escritórios, dados do advogado e chaves de API')
