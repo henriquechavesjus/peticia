@@ -105,11 +105,17 @@ export function pastaTemplates() {
 export function normalizarCaminhoColado(entrada) {
   let s = String(entrada ?? '').trim();
 
-  if (
-    (s.startsWith('"') && s.endsWith('"')) ||
-    (s.startsWith("'") && s.endsWith("'"))
-  ) {
-    s = s.slice(1, -1);
+  // Só descasca a aspa quando ela é mesmo um invólucro: aparece nas duas pontas
+  // e em nenhum outro lugar. Um nome que contenha aspa no meio ("aspa de'entrada")
+  // fica intacto, em vez de perder as pontas por engano.
+  for (const aspa of ['"', "'"]) {
+    if (s.length >= 2 && s.startsWith(aspa) && s.endsWith(aspa)) {
+      const interior = s.slice(1, -1);
+      if (!interior.includes(aspa)) {
+        s = interior;
+        break;
+      }
+    }
   }
 
   s = s.replace(/\\ /g, ' ').trim();

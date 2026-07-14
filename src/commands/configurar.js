@@ -34,6 +34,42 @@ import { aviso, cor, dim, info, ok, passo, secao } from '../lib/ui.js';
 
 const CAMINHO_CUSTOMIZADO = Symbol('customizado');
 
+/**
+ * O inquirer chama validate ANTES de filter, e passa o texto cru. Validar o
+ * caminho sem normalizar antes significa checar a existência de uma string que
+ * ainda tem as aspas que o Finder colou — a pasta existe e o wizard jura que
+ * não. Por isso todo validate de caminho normaliza por conta própria.
+ */
+async function validarPasta(entrada, { opcional = false } = {}) {
+  const caminho = normalizarCaminhoColado(entrada);
+
+  if (!caminho) {
+    return opcional ? true : 'Digite um caminho.';
+  }
+  if (!(await fs.pathExists(caminho))) {
+    return `A pasta não existe: ${caminho}`;
+  }
+  if (!(await fs.stat(caminho)).isDirectory()) {
+    return 'O caminho existe, mas não é uma pasta.';
+  }
+
+  return true;
+}
+
+/** Mesma armadilha: validate recebe o texto cru, então trima aqui também. */
+const naoVazio = (mensagem) => (v) => (String(v ?? '').trim() ? true : mensagem);
+
+/**
+ * A linha de confirmação também ecoa o texto cru. Sem isto, o aluno cola o
+ * caminho com as aspas do Finder e vê as aspas de volta — sem saber se o
+ * peticia entendeu o caminho ou a string literal. Mostramos o caminho limpo,
+ * que é o que vai para o escritorio.json.
+ */
+const transformarCaminho = (valor, a, b) => {
+  const isFinal = a?.isFinal ?? b?.isFinal ?? false;
+  return isFinal ? normalizarCaminhoColado(valor) || valor : valor;
+};
+
 // --- etapa 0: onde criar a pasta ---
 
 async function etapaLocal({ sandbox }) {
@@ -70,7 +106,8 @@ async function etapaLocal({ sandbox }) {
       name: 'customizado',
       message: 'Caminho completo da pasta:',
       filter: normalizarCaminhoColado,
-      validate: (v) => (v ? true : 'Digite um caminho.'),
+      validate: (v) => (normalizarCaminhoColado(v) ? true : 'Digite um caminho.'),
+      transformer: transformarCaminho,
     },
   ]);
 
@@ -164,7 +201,7 @@ async function etapaAdvogado() {
       name: 'nome',
       message: 'Nome completo:',
       filter: (v) => String(v).trim(),
-      validate: (v) => (v ? true : 'O nome é obrigatório.'),
+      validate: naoVazio('O nome é obrigatório.'),
     },
   ]);
 
@@ -210,7 +247,7 @@ async function etapaEscritorio() {
       name: 'nome',
       message: 'Nome do escritório:',
       filter: (v) => String(v).trim(),
-      validate: (v) => (v ? true : 'O nome é obrigatório.'),
+      validate: naoVazio('O nome é obrigatório.'),
     },
   ]);
 
@@ -223,13 +260,8 @@ async function etapaEscritorio() {
       message: 'Caminho da pasta raiz do escritório:',
       filter: normalizarCaminhoColado,
       // O validate roda em loop até passar: é a re-pergunta pedida na spec.
-      validate: async (v) => {
-        if (!v) return 'Digite um caminho.';
-        if (!(await fs.pathExists(v))) return `A pasta não existe: ${v}`;
-        const stat = await fs.stat(v);
-        if (!stat.isDirectory()) return 'O caminho existe, mas não é uma pasta.';
-        return true;
-      },
+      validate: (v) => validarPasta(v),
+      transformer: transformarCaminho,
     },
   ]);
 
@@ -250,7 +282,7 @@ async function etapaEscritorio() {
         name: 'nomeSocio',
         message: 'Nome do sócio:',
         filter: (v) => String(v).trim(),
-        validate: (v) => (v ? true : 'O nome do sócio é obrigatório.'),
+        validate: naoVazio('O nome do sócio é obrigatório.'),
       },
     ]);
     socio = { nome: nomeSocio, oab: await perguntarOab('OAB do sócio') };
@@ -298,11 +330,8 @@ async function etapaEstrutura(raiz) {
         name: 'manual',
         message: `${alvo.rotulo}${alvo.obrigatorio ? '' : ' (opcional)'}:`,
         filter: normalizarCaminhoColado,
-        validate: async (v) => {
-          if (!v) return true; // Enter = pular
-          if (!(await fs.pathExists(v))) return `Não existe: ${v}`;
-          return true;
-        },
+        validate: (v) => validarPasta(v, { opcional: true }), // Enter = pular
+        transformer: transformarCaminho,
       },
     ]);
 
