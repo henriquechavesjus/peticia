@@ -31,31 +31,10 @@ import {
   pastaPadrao,
 } from '../lib/paths.js';
 import { aviso, cor, dim, info, ok, passo, secao } from '../lib/ui.js';
+import { validarCaminho } from '../lib/validar-caminho.js';
 import { VERSAO } from '../lib/versao.js';
 
 const CAMINHO_CUSTOMIZADO = Symbol('customizado');
-
-/**
- * O inquirer chama validate ANTES de filter, e passa o texto cru. Validar o
- * caminho sem normalizar antes significa checar a existência de uma string que
- * ainda tem as aspas que o Finder colou — a pasta existe e o wizard jura que
- * não. Por isso todo validate de caminho normaliza por conta própria.
- */
-async function validarPasta(entrada, { opcional = false } = {}) {
-  const caminho = normalizarCaminhoColado(entrada);
-
-  if (!caminho) {
-    return opcional ? true : 'Digite um caminho.';
-  }
-  if (!(await fs.pathExists(caminho))) {
-    return `A pasta não existe: ${caminho}`;
-  }
-  if (!(await fs.stat(caminho)).isDirectory()) {
-    return 'O caminho existe, mas não é uma pasta.';
-  }
-
-  return true;
-}
 
 /** Mesma armadilha: validate recebe o texto cru, então trima aqui também. */
 const naoVazio = (mensagem) => (v) => (String(v ?? '').trim() ? true : mensagem);
@@ -261,7 +240,7 @@ async function etapaEscritorio() {
       message: 'Caminho da pasta raiz do escritório:',
       filter: normalizarCaminhoColado,
       // O validate roda em loop até passar: é a re-pergunta pedida na spec.
-      validate: (v) => validarPasta(v),
+      validate: (v) => validarCaminho(v, { tipo: 'diretorio' }),
       transformer: transformarCaminho,
     },
   ]);
@@ -331,7 +310,14 @@ async function etapaEstrutura(raiz) {
         name: 'manual',
         message: `${alvo.rotulo}${alvo.obrigatorio ? '' : ' (opcional)'}:`,
         filter: normalizarCaminhoColado,
-        validate: (v) => validarPasta(v, { opcional: true }), // Enter = pular
+        // Cada alvo valida pelo SEU tipo: o timbrado é um arquivo .docx, e
+        // exigir diretório aqui travava o wizard num loop sem saída.
+        validate: (v) =>
+          validarCaminho(v, {
+            tipo: alvo.tipo,
+            extensoes: alvo.extensoes,
+            opcional: true, // Enter = pular
+          }),
         transformer: transformarCaminho,
       },
     ]);

@@ -15,7 +15,12 @@ export const ehMac = process.platform === 'darwin';
  */
 export function baseHome({ sandbox = false, base } = {}) {
   if (base) return base; // usado pelos testes, para não depender da home real
-  return sandbox ? path.join(os.homedir(), '.peticia-sandbox') : os.homedir();
+  if (!sandbox) return os.homedir();
+
+  // PETICIA_SANDBOX_DIR permite que os drivers automatizados usem um sandbox
+  // próprio (~/.peticia-sandbox-teste) e não destruam o sandbox onde o usuário
+  // testa o wizard à mão.
+  return process.env.PETICIA_SANDBOX_DIR || path.join(os.homedir(), '.peticia-sandbox');
 }
 
 /** Estado interno do CLI: <BASE>/.peticia */

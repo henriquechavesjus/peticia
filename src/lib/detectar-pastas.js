@@ -125,12 +125,39 @@ function detectarProtocolados(raiz, dirs) {
   return null;
 }
 
-/** Alvos na ordem em que o wizard exibe e pergunta. */
+/**
+ * Alvos na ordem em que o wizard exibe e pergunta.
+ *
+ * `tipo` é a fonte única da verdade: o mesmo alvo é detectado e validado por
+ * ele. O timbrado é um ARQUIVO — tratá-lo como pasta é o que travava o wizard
+ * de quem precisava informá-lo à mão.
+ */
 export const ALVOS = [
-  { chave: 'fila_entrada', rotulo: 'Fila de entrada', obrigatorio: true },
-  { chave: 'modelos', rotulo: 'Pasta de modelos', obrigatorio: true },
-  { chave: 'timbrado', rotulo: 'Timbrado (.docx)', obrigatorio: true },
-  { chave: 'protocolados', rotulo: 'Protocolados', obrigatorio: false },
+  {
+    chave: 'fila_entrada',
+    rotulo: 'Fila de entrada',
+    obrigatorio: true,
+    tipo: 'diretorio',
+  },
+  {
+    chave: 'modelos',
+    rotulo: 'Pasta de modelos',
+    obrigatorio: true,
+    tipo: 'diretorio',
+  },
+  {
+    chave: 'timbrado',
+    rotulo: 'Timbrado (.docx)',
+    obrigatorio: true,
+    tipo: 'arquivo',
+    extensoes: ['.docx'],
+  },
+  {
+    chave: 'protocolados',
+    rotulo: 'Protocolados',
+    obrigatorio: false,
+    tipo: 'diretorio',
+  },
 ];
 
 /**
