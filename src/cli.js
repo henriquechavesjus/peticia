@@ -2,9 +2,9 @@ import { createRequire } from 'node:module';
 
 import { Command } from 'commander';
 
-import { registrarComandos } from './commands/index.js';
+import { opcaoSandbox, registrarComandos } from './commands/index.js';
 import { DESCRICAO, NODE_MINIMO, NOME } from './constants.js';
-import { abortar, erro, info } from './lib/ui.js';
+import { erro, info } from './lib/ui.js';
 
 // createRequire em vez de "import ... with { type: 'json' }" para não emitir
 // ExperimentalWarning no terminal do aluno.
@@ -14,9 +14,10 @@ const { version } = require('../package.json');
 function checarNode() {
   const maior = Number(process.versions.node.split('.')[0]);
   if (maior < NODE_MINIMO) {
-    abortar(
+    erro(
       `o peticia precisa do Node ${NODE_MINIMO} ou superior (você tem ${process.versions.node})`,
     );
+    process.exit(1);
   }
 }
 
@@ -38,16 +39,42 @@ function acaoPadrao(_opcoes, comando) {
   info(`Veja os comandos disponíveis com: ${NOME} --help`);
 }
 
-export function main(argv) {
+/**
+ * Traduz exceções em mensagens de uma linha. O aluno nunca deve ver stack trace:
+ * ele não tem o que fazer com uma, e ela esconde a instrução que resolveria.
+ */
+function tratarErro(e) {
+  // Ctrl+C durante um prompt do inquirer.
+  if (e?.name === 'ExitPromptError') {
+    info('');
+    info('Configuração cancelada. Nada foi salvo.');
+    process.exit(130);
+  }
+
+  erro(e?.message ?? String(e));
+  if (e?.dica) info(e.dica);
+
+  if (process.env.PETICIA_DEBUG) {
+    console.error(e);
+  } else {
+    info('');
+    info('Para ver detalhes técnicos, rode de novo com PETICIA_DEBUG=1');
+  }
+
+  process.exit(1);
+}
+
+export async function main(argv) {
   checarNode();
 
-  const program = new Command();
+  const programa = new Command();
 
-  program
+  programa
     .name(NOME)
     .description(DESCRICAO)
     .version(version, '-v, --version', 'mostra a versão instalada')
     .helpOption('-h, --help', 'mostra esta ajuda')
+    .addOption(opcaoSandbox())
     .addHelpText(
       'after',
       `
@@ -55,16 +82,16 @@ Uso diário:
   $ ${NOME}                  abre a conversa com o Claude Code
 
 Primeira vez:
-  $ ${NOME} ativar           instala e ativa a licença
+  $ ${NOME} configurar       cria a pasta e o escritorio.json
 `,
     )
     .action(acaoPadrao);
 
-  program.configureOutput({
-    writeErr: (str) => process.stderr.write(str),
-  });
+  registrarComandos(programa);
 
-  registrarComandos(program);
-
-  program.parse(argv);
+  try {
+    await programa.parseAsync(argv);
+  } catch (e) {
+    tratarErro(e);
+  }
 }

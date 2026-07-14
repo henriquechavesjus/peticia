@@ -2,47 +2,150 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { LINK_AGENTES, PASTA_ALUNO } from '../constants.js';
+import fs from 'fs-extra';
+
+import { PASTA_ALUNO } from '../constants.js';
 
 export const ehWindows = process.platform === 'win32';
 export const ehMac = process.platform === 'darwin';
 
-/** Home do usuário. Em ambos os SOs vem de os.homedir(). */
-export function home() {
-  return os.homedir();
+/**
+ * Raiz de tudo. Em modo sandbox, ~/.peticia-sandbox faz o papel da home:
+ * o estado e a pasta do aluno passam a viver lá dentro, e nada toca o ~/ real.
+ */
+export function baseHome({ sandbox = false } = {}) {
+  return sandbox ? path.join(os.homedir(), '.peticia-sandbox') : os.homedir();
 }
 
-/** Pasta visível do aluno: ~/peticia */
-export function pastaAluno() {
-  return path.join(home(), PASTA_ALUNO);
+/** Estado interno do CLI: <BASE>/.peticia */
+export function pastaEstado(opcoes) {
+  return path.join(baseHome(opcoes), '.peticia');
 }
 
-/** Onde o Claude Code procura agentes: ~/.claude/agents */
-export function pastaAgentesClaude() {
-  return path.join(home(), '.claude', 'agents');
+/** O ponteiro que diz onde o aluno mandou criar a pasta principal. */
+export function arquivoInstalacao(opcoes) {
+  return path.join(pastaEstado(opcoes), 'instalacao.json');
 }
 
-/** O link ~/.claude/agents/peticia -> ~/peticia/agentes */
-export function linkAgentes() {
-  return path.join(pastaAgentesClaude(), LINK_AGENTES);
+/** Local padrão da pasta do aluno, se ele não escolher outro. */
+export function pastaPadrao(opcoes) {
+  return path.join(baseHome(opcoes), PASTA_ALUNO);
 }
 
-export function pastaConfig() {
-  return path.join(pastaAluno(), 'config');
+export class NaoConfigurado extends Error {
+  constructor() {
+    super('o peticia ainda não foi configurado neste computador');
+    this.name = 'NaoConfigurado';
+    this.dica = 'Rode "peticia configurar" primeiro.';
+  }
 }
 
-export function arquivoEscritorios() {
-  return path.join(pastaConfig(), 'escritorios.json');
+export class InstalacaoInvalida extends Error {
+  constructor(arquivo) {
+    super(`o arquivo de instalação está ilegível: ${arquivo}`);
+    this.name = 'InstalacaoInvalida';
+    this.dica = 'Rode "peticia configurar" para recriá-lo.';
+  }
 }
 
 /**
- * Raiz do pacote instalado (onde vivem templates/ e src/), independente de
- * onde o npm colocou o global bin.
+ * Onde vive a pasta do aluno. Toda leitura futura passa por aqui.
+ * Lança NaoConfigurado se o wizard nunca rodou.
  */
+export async function getPeticiaHome(opcoes = {}) {
+  const arquivo = arquivoInstalacao(opcoes);
+
+  if (!(await fs.pathExists(arquivo))) {
+    throw new NaoConfigurado();
+  }
+
+  let dados;
+  try {
+    dados = await fs.readJson(arquivo);
+  } catch {
+    throw new InstalacaoInvalida(arquivo);
+  }
+
+  if (!dados?.pasta_peticia) {
+    throw new InstalacaoInvalida(arquivo);
+  }
+
+  return dados.pasta_peticia;
+}
+
+// --- caminhos derivados da pasta do aluno ---
+
+export const pastaConfig = (home) => path.join(home, 'config');
+export const arquivoEscritorio = (home) => path.join(pastaConfig(home), 'escritorio.json');
+export const arquivoEnv = (home) => path.join(home, '.env');
+export const pastaAgentes = (home) => path.join(home, 'agentes');
+
+/** Onde o Claude Code procura agentes (usado só na próxima sessão). */
+export function pastaAgentesClaude(opcoes) {
+  return path.join(baseHome(opcoes), '.claude', 'agents');
+}
+
+// --- caminhos do próprio pacote ---
+
 export function raizPacote() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 }
 
 export function pastaTemplates() {
   return path.join(raizPacote(), 'templates');
+}
+
+// --- utilidades ---
+
+/**
+ * Normaliza um caminho que o aluno colou ou arrastou para o terminal.
+ * Arrastar uma pasta no Terminal do Mac cola com espaços escapados ("Meus\ Casos")
+ * e, se o caminho tiver aspas, elas vêm junto. Nada disso é um caminho válido.
+ */
+export function normalizarCaminhoColado(entrada) {
+  let s = String(entrada ?? '').trim();
+
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1);
+  }
+
+  s = s.replace(/\\ /g, ' ').trim();
+
+  if (s === '~' || s.startsWith('~/') || s.startsWith('~\\')) {
+    s = path.join(os.homedir(), s.slice(1));
+  }
+
+  return s ? path.resolve(s) : '';
+}
+
+/**
+ * Locais oferecidos na etapa 0. O nome de "Documentos" e "Desktop" muda com o
+ * idioma do SO, então só ofereço o que existe de fato nesta máquina.
+ */
+export async function locaisSugeridos(opcoes = {}) {
+  const base = baseHome(opcoes);
+  const locais = [{ nome: '~/peticia (recomendado)', caminho: pastaPadrao(opcoes) }];
+
+  const familias = [
+    ['Documentos', 'Documents'],
+    ['Desktop', 'Área de Trabalho'],
+  ];
+
+  for (const candidatos of familias) {
+    for (const candidato of candidatos) {
+      const dir = path.join(base, candidato);
+      if (await fs.pathExists(dir)) {
+        locais.push({
+          nome: `~/${candidato}/${PASTA_ALUNO}`,
+          caminho: path.join(dir, PASTA_ALUNO),
+        });
+        break;
+      }
+    }
+  }
+
+  return locais;
 }
