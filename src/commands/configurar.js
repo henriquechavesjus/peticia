@@ -31,6 +31,7 @@ import {
   pastaPadrao,
 } from '../lib/paths.js';
 import { aviso, cor, dim, info, ok, passo, secao } from '../lib/ui.js';
+import { VERSAO } from '../lib/versao.js';
 
 const CAMINHO_CUSTOMIZADO = Symbol('customizado');
 
@@ -489,6 +490,7 @@ export async function aplicar({ destino, dados, chaveOpenai, sandbox, agoraIso }
       schema_versao: 1,
       pasta_peticia: destino,
       criado_em: agoraIso,
+      versao_cli: VERSAO,
       so: process.platform,
     },
     { spaces: 2 },

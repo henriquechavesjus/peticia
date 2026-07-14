@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import fs from 'fs-extra';
 
-import { PASTA_ALUNO } from '../constants.js';
+import { LINK_AGENTES, PASTA_ALUNO } from '../constants.js';
 
 export const ehWindows = process.platform === 'win32';
 export const ehMac = process.platform === 'darwin';
@@ -13,7 +13,8 @@ export const ehMac = process.platform === 'darwin';
  * Raiz de tudo. Em modo sandbox, ~/.peticia-sandbox faz o papel da home:
  * o estado e a pasta do aluno passam a viver lá dentro, e nada toca o ~/ real.
  */
-export function baseHome({ sandbox = false } = {}) {
+export function baseHome({ sandbox = false, base } = {}) {
+  if (base) return base; // usado pelos testes, para não depender da home real
   return sandbox ? path.join(os.homedir(), '.peticia-sandbox') : os.homedir();
 }
 
@@ -80,9 +81,14 @@ export const arquivoEscritorio = (home) => path.join(pastaConfig(home), 'escrito
 export const arquivoEnv = (home) => path.join(home, '.env');
 export const pastaAgentes = (home) => path.join(home, 'agentes');
 
-/** Onde o Claude Code procura agentes (usado só na próxima sessão). */
+/** Onde o Claude Code procura agentes. */
 export function pastaAgentesClaude(opcoes) {
   return path.join(baseHome(opcoes), '.claude', 'agents');
+}
+
+/** O link ~/.claude/agents/peticia -> <pasta do aluno>/agentes */
+export function linkAgentes(opcoes) {
+  return path.join(pastaAgentesClaude(opcoes), LINK_AGENTES);
 }
 
 // --- caminhos do próprio pacote ---

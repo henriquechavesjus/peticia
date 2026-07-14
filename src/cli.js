@@ -1,15 +1,9 @@
-import { createRequire } from 'node:module';
-
 import { Command } from 'commander';
 
 import { opcaoSandbox, registrarComandos } from './commands/index.js';
 import { DESCRICAO, NODE_MINIMO, NOME } from './constants.js';
 import { erro, info } from './lib/ui.js';
-
-// createRequire em vez de "import ... with { type: 'json' }" para não emitir
-// ExperimentalWarning no terminal do aluno.
-const require = createRequire(import.meta.url);
-const { version } = require('../package.json');
+import { VERSAO } from './lib/versao.js';
 
 function checarNode() {
   const maior = Number(process.versions.node.split('.')[0]);
@@ -72,7 +66,7 @@ export async function main(argv) {
   programa
     .name(NOME)
     .description(DESCRICAO)
-    .version(version, '-v, --version', 'mostra a versão instalada')
+    .version(VERSAO, '-v, --version', 'mostra a versão instalada')
     .helpOption('-h, --help', 'mostra esta ajuda')
     .addOption(opcaoSandbox())
     .addHelpText(

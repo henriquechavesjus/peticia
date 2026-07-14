@@ -2,6 +2,7 @@ import { Option } from 'commander';
 
 import { abortar } from '../lib/ui.js';
 import { configurar } from './configurar.js';
+import { status } from './status.js';
 
 /**
  * Comandos de SETUP ainda não implementados. Aparecem no --help com a
@@ -12,10 +13,6 @@ const STUBS = [
   {
     nome: 'ativar',
     descricao: 'Instala o peticia e ativa a licença neste dispositivo',
-  },
-  {
-    nome: 'status',
-    descricao: 'Mostra o estado da instalação, da licença e dos agentes',
   },
   {
     nome: 'atualizar',
@@ -53,6 +50,15 @@ export function registrarComandos(programa) {
     .addOption(opcaoSandbox())
     .action(async (_opcoes, comando) => {
       await configurar({ sandbox: sandboxAtivo(programa, comando) });
+    });
+
+  programa
+    .command('status')
+    .description('Mostra o estado da instalação, da licença e dos agentes')
+    .option('--json', 'imprime os dados em JSON em vez do painel')
+    .addOption(opcaoSandbox())
+    .action(async (opcoes, comando) => {
+      await status({ sandbox: sandboxAtivo(programa, comando), json: Boolean(opcoes.json) });
     });
 
   for (const { nome, descricao } of STUBS) {
