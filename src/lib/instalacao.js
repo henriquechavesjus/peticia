@@ -11,8 +11,26 @@ import {
   pastaAgentesClaude,
   pastaConfig,
   pastaEstado,
+  pastaTemplates,
 } from './paths.js';
 import { aviso } from './ui.js';
+
+/**
+ * O que a ativação copia dos templates para a pasta do aluno.
+ * Cada entrada: de onde (dentro de templates/) para onde (dentro da pasta).
+ */
+export const TEMPLATES = {
+  agentes: ['redator.md'],
+  lib: ['peticao_lib.py'],
+  ferramentas: ['correcao-inicial-gpt'],
+};
+
+/** Resumo do que foi instalado, para o instalacao.json. */
+export const RESUMO_TEMPLATES = {
+  agentes_instalados: ['redator'],
+  lib_python: 'peticao_lib.py',
+  ferramentas_instaladas: ['correcao-inicial-gpt'],
+};
 
 /**
  * Estrutura local da instalação, compartilhada por `ativar` e `configurar`.
@@ -65,6 +83,31 @@ export async function criarEstrutura(destino) {
 
   await fs.writeFile(path.join(destino, 'README.md'), README(destino));
   await proteger(pastaConfig(destino), 0o700);
+}
+
+/**
+ * Copia os agentes/lib/ferramentas dos templates para a pasta do aluno.
+ *
+ * Preserva o que o aluno já editou: um arquivo que já exista no destino NÃO é
+ * sobrescrito (os agentes são dele depois de instalados). Devolve o resumo do
+ * que existe agora, para registrar no ponteiro.
+ */
+export async function instalarTemplates(destino) {
+  const origem = pastaTemplates();
+
+  for (const [subpasta, itens] of Object.entries(TEMPLATES)) {
+    for (const item of itens) {
+      const de = path.join(origem, subpasta, item);
+      const para = path.join(destino, subpasta, item);
+
+      if (await fs.pathExists(para)) continue; // não sobrescreve edição do aluno
+      if (!(await fs.pathExists(de))) continue; // template ausente: ignora
+
+      await fs.copy(de, para);
+    }
+  }
+
+  return RESUMO_TEMPLATES;
 }
 
 /**

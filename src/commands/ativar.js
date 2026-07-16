@@ -5,7 +5,12 @@ import ora from 'ora';
 
 import { gerarDeviceId } from '../lib/device.js';
 import { escolherLocal } from '../lib/escolher-local.js';
-import { criarEstrutura, criarLinkAgentes, escreverPonteiro } from '../lib/instalacao.js';
+import {
+  criarEstrutura,
+  criarLinkAgentes,
+  escreverPonteiro,
+  instalarTemplates,
+} from '../lib/instalacao.js';
 import { arquivoEscritorio, pastaConfig } from '../lib/paths.js';
 import { chamarEdgeFunction, ErroDeRede } from '../lib/supabase.js';
 import { aviso, cor, dim, info, ok, secao } from '../lib/ui.js';
@@ -96,6 +101,9 @@ async function instalar({ sandbox, email, usuario, modulos, deviceId, agoraIso }
 
   await criarEstrutura(destino);
 
+  // Copia redator.md, peticao_lib.py e a ferramenta GPT para a pasta do aluno.
+  const resumoTemplates = await instalarTemplates(destino);
+
   await fs.writeJson(
     path.join(pastaConfig(destino), 'modulos.json'),
     { modulos, atualizado_em: agoraIso },
@@ -108,11 +116,13 @@ async function instalar({ sandbox, email, usuario, modulos, deviceId, agoraIso }
     email,
     nome: usuario?.nome ?? null,
     device_id: deviceId,
+    ...resumoTemplates,
   });
 
   const link = await criarLinkAgentes(destino, { sandbox });
 
   ok(`pasta criada em ${destino}`);
+  ok(`agentes instalados: ${resumoTemplates.agentes_instalados.join(', ')}`);
   if (link.criado) {
     ok(`Claude Code conectado (${link.link})`);
   } else {
