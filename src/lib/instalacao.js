@@ -20,14 +20,14 @@ import { aviso } from './ui.js';
  * Cada entrada: de onde (dentro de templates/) para onde (dentro da pasta).
  */
 export const TEMPLATES = {
-  agentes: ['redator.md'],
+  agentes: ['redator.md', 'revisor-gpt.md'],
   lib: ['peticao_lib.py'],
   ferramentas: ['correcao-inicial-gpt'],
 };
 
 /** Resumo do que foi instalado, para o instalacao.json. */
 export const RESUMO_TEMPLATES = {
-  agentes_instalados: ['redator'],
+  agentes_instalados: ['redator', 'revisor-gpt'],
   lib_python: 'peticao_lib.py',
   ferramentas_instaladas: ['correcao-inicial-gpt'],
 };

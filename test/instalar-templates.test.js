@@ -23,15 +23,17 @@ describe('instalarTemplates', () => {
     await fs.remove(destino);
   });
 
-  it('copia redator.md, peticao_lib.py e a ferramenta GPT para os locais certos', async () => {
+  it('copia os agentes, a lib e a ferramenta GPT para os locais certos', async () => {
     const resumo = await instalarTemplates(destino);
 
     const redator = path.join(destino, 'agentes', 'redator.md');
+    const revisor = path.join(destino, 'agentes', 'revisor-gpt.md');
     const lib = path.join(destino, 'lib', 'peticao_lib.py');
     const tool = path.join(destino, 'ferramentas', 'correcao-inicial-gpt', 'corrigir_inicial.py');
 
     for (const [rotulo, arquivo] of [
       ['redator.md', redator],
+      ['revisor-gpt.md', revisor],
       ['peticao_lib.py', lib],
       ['corrigir_inicial.py', tool],
     ]) {
@@ -41,6 +43,7 @@ describe('instalarTemplates', () => {
     }
 
     assert.deepEqual(resumo, RESUMO_TEMPLATES);
+    assert.deepEqual(resumo.agentes_instalados, ['redator', 'revisor-gpt']);
   });
 
   it('NÃO copia o .env real da ferramenta (só o .env.example)', async () => {
