@@ -30,6 +30,7 @@ describe('instalarTemplates', () => {
       'redator.md': path.join(destino, 'agentes', 'redator.md'),
       'revisor-gpt.md': path.join(destino, 'agentes', 'revisor-gpt.md'),
       'organizador.md': path.join(destino, 'agentes', 'organizador.md'),
+      'conferente.md': path.join(destino, 'agentes', 'conferente.md'),
       'peticao_lib.py': path.join(destino, 'lib', 'peticao_lib.py'),
       'corrigir_inicial.py': path.join(
         destino, 'ferramentas', 'correcao-inicial-gpt', 'corrigir_inicial.py'),
@@ -44,7 +45,9 @@ describe('instalarTemplates', () => {
     }
 
     assert.deepEqual(resumo, RESUMO_TEMPLATES);
-    assert.deepEqual(resumo.agentes_instalados, ['redator', 'revisor-gpt', 'organizador']);
+    assert.deepEqual(resumo.agentes_instalados, [
+      'redator', 'revisor-gpt', 'organizador', 'conferente',
+    ]);
     assert.deepEqual(resumo.ferramentas_instaladas, ['correcao-inicial-gpt', 'organizador']);
   });
 

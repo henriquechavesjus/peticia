@@ -80,14 +80,46 @@ Antes de redigir, confirme que existem:
 
 **Se faltar QUALQUER um, NÃO redija.** Bloqueie e reporte o que falta. Confira também os fatos do relatório contra as provas juntadas.
 
-## 5. CONFERÊNCIA FORENSE (pega o que passa batido)
+## 5. CONFERÊNCIA CRUZADA — porta de entrada, ANTES de redigir
 
-Além dos 3 documentos, confira e REPORTE no relatório final:
+Confirmada a **presença** dos 3 documentos (passo 4), cruze os dados entre eles **antes de escrever uma linha**. É a regra de ouro do *falha rápido*: um problema pego aqui custa quase nada; a mesma peça redigida e depois rejeitada no conferente custa a inicial inteira em tokens.
 
-- **Grafia do nome** entre documentos (ex.: "DANIELA" no comprovante × "DANIELLA" no RG). Se CPF e endereço batem, não bloqueia — mas registre.
-- **CPF, RG e CEP dígito por dígito** entre identidade, procuração e comprovante. Divergência de dígito na procuração é alerta (risco de questionamento da representação processual).
-- **Datas do relatório × datas das provas**: se o relatório disser "faz um ano" mas as provas forem do mês passado, NÃO afirme prazo específico na inicial — a ré derruba isso. Reporte a contradição.
-- Valor de saldo/prejuízo só entra como dano material se houver **documento** (extrato/print) que o comprove; se vier só do relato, não invente cifra.
+**Se qualquer check de BLOQUEIO falhar, PARE. Não redija.** Emita o relatório de problemas (formato abaixo) e encerre.
+
+### Checks de BLOQUEIO (abortam a redação)
+
+1. **CPF divergente.** Extraia o CPF do documento de identidade e da procuração. Se diferirem — **mesmo que por um dígito** — ABORTE. Divergência de CPF na procuração compromete a representação processual.
+2. **RG divergente** entre identidade e procuração (quando a procuração traz o RG): ABORTE.
+3. **CPF com formato inválido**: não segue `000.000.000-00` (11 dígitos) ou falha na conferência dos dígitos verificadores → ABORTE.
+4. **Procuração sem assinatura** (nenhuma assinatura visível/rubrica no campo do outorgante) → ABORTE.
+5. **Comprovante em nome de terceiro sem vínculo.** O titular deve ser o cliente ou familiar direto (pais, cônjuge, filhos maiores). Se for terceiro e **não houver** na pasta certidão de casamento, declaração de residência ou outro documento de vínculo → ABORTE pedindo a declaração de residência.
+
+### Checks de ALERTA (não abortam — registre no relatório)
+
+- **Grafia do nome** divergente (ex.: "DANIELA" no comprovante × "DANIELLA" no RG) **com CPF e endereço batendo**: NÃO bloqueia — o cliente é claramente a mesma pessoa. Apenas registre para o advogado conferir.
+- **Comprovante com mais de 3 meses**: registre a data de emissão e siga; o advogado decide se o juizado exige mais recente. (Se a data não for legível, registre "data de emissão ilegível".)
+- **CEP/endereço** divergente entre comprovante e demais documentos: registre.
+- **Datas do relatório × datas das provas**: se o relatório disser "faz um ano" mas as provas forem do mês passado, NÃO afirme prazo específico na inicial — a ré derruba isso. Registre a contradição.
+- **Valor de saldo/prejuízo** só entra como dano material se houver **documento** (extrato/print) que o comprove; se vier só do relato, não invente cifra.
+
+### Formato do relatório de aborto
+
+```
+Não vou redigir esta inicial. Encontrei problemas que precisam ser
+corrigidos primeiro:
+
+1. INCONSISTÊNCIA DE CPF
+   - No RG: 123.456.789-00
+   - Na procuração: 123.456.788-00
+   Diferença de um dígito — provável erro de digitação em um dos documentos.
+
+2. COMPROVANTE EM NOME DE TERCEIRO
+   - Cliente: João Silva
+   - Titular do comprovante: Maria Silva
+   - Sem certidão de casamento nem declaração de residência na pasta.
+
+Corrija e rode novamente.
+```
 
 ## 6. ESCOLHA O MODELO (lendo a pasta de modelos)
 
@@ -144,9 +176,13 @@ Tudo que entra no contexto é recobrado em todos os turnos seguintes.
 
 ## 10. RELATÓRIO FINAL
 
+Se você **abortou** na conferência cruzada (passo 5), o relatório é a lista de problemas — e nada mais foi feito.
+
+Se você **redigiu**, informe:
+
 1. Caminho completo onde salvou a inicial.
 2. Documento faltante, se houver (ou "nenhum").
-3. Achados da conferência forense (grafia, dígitos, datas), se houver.
+3. Alertas da conferência cruzada que NÃO bloquearam (grafia, comprovante antigo, endereço, datas) — para o advogado conferir.
 
 NÃO liste a fila nem calcule "próxima pasta": você trabalha só na pasta que recebeu.
 
