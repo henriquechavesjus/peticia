@@ -23,27 +23,29 @@ describe('instalarTemplates', () => {
     await fs.remove(destino);
   });
 
-  it('copia os agentes, a lib e a ferramenta GPT para os locais certos', async () => {
+  it('copia os agentes, a lib e as ferramentas para os locais certos', async () => {
     const resumo = await instalarTemplates(destino);
 
-    const redator = path.join(destino, 'agentes', 'redator.md');
-    const revisor = path.join(destino, 'agentes', 'revisor-gpt.md');
-    const lib = path.join(destino, 'lib', 'peticao_lib.py');
-    const tool = path.join(destino, 'ferramentas', 'correcao-inicial-gpt', 'corrigir_inicial.py');
+    const arquivos = {
+      'redator.md': path.join(destino, 'agentes', 'redator.md'),
+      'revisor-gpt.md': path.join(destino, 'agentes', 'revisor-gpt.md'),
+      'organizador.md': path.join(destino, 'agentes', 'organizador.md'),
+      'peticao_lib.py': path.join(destino, 'lib', 'peticao_lib.py'),
+      'corrigir_inicial.py': path.join(
+        destino, 'ferramentas', 'correcao-inicial-gpt', 'corrigir_inicial.py'),
+      'organizar_pasta.py': path.join(
+        destino, 'ferramentas', 'organizador', 'organizar_pasta.py'),
+    };
 
-    for (const [rotulo, arquivo] of [
-      ['redator.md', redator],
-      ['revisor-gpt.md', revisor],
-      ['peticao_lib.py', lib],
-      ['corrigir_inicial.py', tool],
-    ]) {
+    for (const [rotulo, arquivo] of Object.entries(arquivos)) {
       assert.ok(await fs.pathExists(arquivo), `${rotulo} não foi copiado`);
       const conteudo = await fs.readFile(arquivo, 'utf8');
       assert.ok(conteudo.trim().length > 0, `${rotulo} está vazio`);
     }
 
     assert.deepEqual(resumo, RESUMO_TEMPLATES);
-    assert.deepEqual(resumo.agentes_instalados, ['redator', 'revisor-gpt']);
+    assert.deepEqual(resumo.agentes_instalados, ['redator', 'revisor-gpt', 'organizador']);
+    assert.deepEqual(resumo.ferramentas_instaladas, ['correcao-inicial-gpt', 'organizador']);
   });
 
   it('NÃO copia o .env real da ferramenta (só o .env.example)', async () => {
@@ -92,5 +94,13 @@ describe('templates do pacote (segurança de publicação)', () => {
     // Não pode carregar o caminho do Dropbox de nenhuma máquina específica.
     assert.ok(!lib.includes('/Users/'), 'peticao_lib.py tem caminho absoluto hardcoded');
     assert.ok(lib.includes('def __init__(self, timbrado)'), 'timbrado deixou de ser obrigatório');
+  });
+
+  it('organizar_pasta.py não tem caminho absoluto hardcoded', async () => {
+    const script = await fs.readFile(
+      path.join(pastaTemplates(), 'ferramentas', 'organizador', 'organizar_pasta.py'),
+      'utf8',
+    );
+    assert.ok(!script.includes('/Users/'), 'organizar_pasta.py tem caminho hardcoded');
   });
 });

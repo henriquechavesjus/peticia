@@ -1,0 +1,4 @@
+# Dependências Python do organizar_pasta.py.
+# Instale com: pip3 install -r requirements.txt
+Pillow>=10
+pypdf>=4
