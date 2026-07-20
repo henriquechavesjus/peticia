@@ -71,3 +71,41 @@ describe('conferente.md — validação final', () => {
     assert.match(t, /\.docx.*ESPERADO|ESPERADO.*não uma pendência/s);
   });
 });
+
+describe('maestro.md — orquestração', () => {
+  it('é um agente Sonnet', async () => {
+    const t = await agente('maestro.md');
+    assert.match(t, /^---[\s\S]*model:\s*sonnet[\s\S]*?---/);
+  });
+
+  it('coordena os 4 agentes na sequência do pipeline', async () => {
+    const t = await agente('maestro.md');
+    // As etapas do pipeline são marcadas "a) redator", "b) revisor-gpt", etc.
+    const etapas = ['a) redator', 'b) revisor-gpt', 'c) organizador', 'd) conferente'];
+    let pos = -1;
+    for (const marca of etapas) {
+      const i = t.indexOf(marca);
+      assert.ok(i > pos, `etapa fora de ordem no pipeline: ${marca}`);
+      pos = i;
+    }
+  });
+
+  it('faz seleção de escritório (1/pergunta) e pula redator que abortou', async () => {
+    const t = await agente('maestro.md');
+    assert.match(t, /PARE e pergunte|Nunca presuma/);
+    assert.match(t, /abortou.*PULE|PULE para a próxima/s);
+  });
+
+  it('pula o revisor-gpt com nota quando falta chave, e confirma antes de lote', async () => {
+    const t = await agente('maestro.md');
+    assert.match(t, /revisor-gpt pulado/);
+    assert.match(t, /Prosseguir\?/);
+  });
+
+  it('nunca menciona custo em dinheiro — só tempo', async () => {
+    const t = await agente('maestro.md');
+    // Sem cifras em dólar/real em lugar nenhum do prompt.
+    assert.ok(!/\$\s?\d|R\$\s?\d/.test(t), 'o maestro menciona custo em dinheiro');
+    assert.match(t, /minutos/);
+  });
+});
