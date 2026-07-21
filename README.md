@@ -73,3 +73,5 @@ MIT — veja o arquivo [LICENSE](LICENSE).
 ## Autor
 
 Dr. Henrique Chaves Bernardo — OAB/BA 37.189
+
+Um produto AdvGrow.
