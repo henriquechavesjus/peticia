@@ -114,6 +114,7 @@ export function montarEscritorio({
       socio: e.socio ?? null,
       estrutura: {
         fila_entrada: e.estrutura.fila_entrada ?? null,
+        para_protocolar: e.estrutura.para_protocolar ?? null,
         modelos: e.estrutura.modelos ?? null,
         timbrado: e.estrutura.timbrado ?? null,
         protocolados: e.estrutura.protocolados ?? null,

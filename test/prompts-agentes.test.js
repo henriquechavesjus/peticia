@@ -108,4 +108,24 @@ describe('maestro.md — orquestração', () => {
     assert.ok(!/\$\s?\d|R\$\s?\d/.test(t), 'o maestro menciona custo em dinheiro');
     assert.match(t, /minutos/);
   });
+
+  it('aciona o move para Para Protocolar após o verde, condicionado à config', async () => {
+    const t = await agente('maestro.md');
+    assert.match(t, /--mover/);
+    assert.match(t, /para_protocolar.*null|null.*não mova/s);
+  });
+});
+
+describe('Para Protocolar — nos prompts', () => {
+  it('conferente diz o destino da peça no veredito verde', async () => {
+    const t = await agente('conferente.md');
+    assert.match(t, /Para Protocolar/);
+    assert.match(t, /Fica na pasta atual|protocole quando puder/);
+  });
+
+  it('organizador documenta o --mover como etapa posterior (não dele)', async () => {
+    const t = await agente('organizador.md');
+    assert.match(t, /--mover/);
+    assert.match(t, /você.*não o executa|não é você/is);
+  });
 });

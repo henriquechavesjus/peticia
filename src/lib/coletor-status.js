@@ -145,6 +145,7 @@ export async function coletarStatus(opcoes = {}) {
     const raiz = await checarCaminho(e.raiz);
     const estrutura = {
       fila: await checarFila(e.estrutura?.fila_entrada),
+      para_protocolar: await checarCaminho(e.estrutura?.para_protocolar),
       modelos: await checarCaminho(e.estrutura?.modelos),
       timbrado: await checarCaminho(e.estrutura?.timbrado),
       protocolados: await checarCaminho(e.estrutura?.protocolados),

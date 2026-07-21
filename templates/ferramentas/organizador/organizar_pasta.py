@@ -154,12 +154,45 @@ def organizar(manifesto):
     }
 
 
+def mover_para_protocolar(pasta, destino_dir):
+    """Move a pasta do caso inteira para a pasta 'Para Protocolar', preservando
+    o nome. Só é chamado pelo maestro DEPOIS do veredito verde do conferente —
+    o organizador não conhece o veredito na passada normal.
+
+    Não sobrescreve: se já houver uma pasta de mesmo nome no destino, para e
+    avisa, em vez de misturar arquivos.
+    """
+    pasta = os.path.abspath(pasta)
+    if not os.path.isdir(pasta):
+        raise NotADirectoryError(f"pasta do caso não encontrada: {pasta}")
+    if not os.path.isdir(destino_dir):
+        raise NotADirectoryError(f"pasta 'Para Protocolar' não encontrada: {destino_dir}")
+
+    destino = os.path.join(destino_dir, os.path.basename(pasta.rstrip(os.sep)))
+    if os.path.exists(destino):
+        raise FileExistsError(f"já existe no destino: {destino}")
+
+    shutil.move(pasta, destino)
+    return {"ok": True, "movida_para": destino}
+
+
 def main():
     if len(sys.argv) < 2:
-        sys.exit("Uso: python3 organizar_pasta.py <manifesto.json>")
-    with open(sys.argv[1], encoding="utf-8") as f:
-        manifesto = json.load(f)
-    resultado = organizar(manifesto)
+        sys.exit(
+            "Uso:\n"
+            "  python3 organizar_pasta.py <manifesto.json>\n"
+            "  python3 organizar_pasta.py --mover <pasta_do_caso> <pasta_para_protocolar>"
+        )
+
+    if sys.argv[1] == "--mover":
+        if len(sys.argv) < 4:
+            sys.exit("Uso: python3 organizar_pasta.py --mover <pasta_do_caso> <pasta_para_protocolar>")
+        resultado = mover_para_protocolar(sys.argv[2], sys.argv[3])
+    else:
+        with open(sys.argv[1], encoding="utf-8") as f:
+            manifesto = json.load(f)
+        resultado = organizar(manifesto)
+
     print(json.dumps(resultado, ensure_ascii=False, indent=2))
 
 

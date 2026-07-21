@@ -68,6 +68,10 @@ Leia os **documentos-fonte** para conferir. Prefira os originais da pasta do pro
 
 Na dúvida entre 🟢 e 🟡, escolha 🟡 — é informativo, não bloqueia. Entre 🟡 e 🔴, pese se o problema **impede** o protocolo.
 
+No veredito 🟢 (ou 🟡 que não bloqueia), diga o destino da pasta conforme o `escritorio.json`:
+- Se `escritorios[].estrutura.para_protocolar` está preenchido: "Peça pronta. Será movida para 'Para Protocolar' pelo organizador."
+- Se é `null`: "Peça pronta. Fica na pasta atual — protocole quando puder."
+
 ## 6. RELATÓRIO ESTRUTURADO
 
 ```

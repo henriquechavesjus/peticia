@@ -126,6 +126,21 @@ function detectarProtocolados(raiz, dirs) {
 }
 
 /**
+ * Pasta de peças prontas aguardando o protocolo no tribunal.
+ *
+ * Basta o nome conter "protocolar" (verbo/futuro): "Para Protocolar",
+ * "02 - Para Protocolar", "A Protocolar". Isso NÃO pega "Protocolados"
+ * (particípio/passado) — a palavra termina em "dos", nunca contém "protocolar".
+ */
+function detectarParaProtocolar(raiz, dirs) {
+  const achado = acharPorTrecho(dirs, ['protocolar']);
+  if (achado) {
+    return { caminho: path.join(raiz, achado), comoAchou: 'o nome contém "protocolar"' };
+  }
+  return null;
+}
+
+/**
  * Alvos na ordem em que o wizard exibe e pergunta.
  *
  * `tipo` é a fonte única da verdade: o mesmo alvo é detectado e validado por
@@ -137,6 +152,12 @@ export const ALVOS = [
     chave: 'fila_entrada',
     rotulo: 'Fila de entrada',
     obrigatorio: true,
+    tipo: 'diretorio',
+  },
+  {
+    chave: 'para_protocolar',
+    rotulo: 'Para Protocolar',
+    obrigatorio: false,
     tipo: 'diretorio',
   },
   {
@@ -168,9 +189,10 @@ export async function detectarEstrutura(raiz) {
   const dirs = await listarDirs(raiz);
 
   const fila_entrada = await detectarFila(raiz, dirs);
+  const para_protocolar = detectarParaProtocolar(raiz, dirs);
   const modelos = detectarModelos(raiz, dirs);
   const timbrado = await detectarTimbrado(raiz, modelos?.caminho);
   const protocolados = detectarProtocolados(raiz, dirs);
 
-  return { fila_entrada, modelos, timbrado, protocolados };
+  return { fila_entrada, para_protocolar, modelos, timbrado, protocolados };
 }

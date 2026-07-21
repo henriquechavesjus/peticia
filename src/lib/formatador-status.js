@@ -34,8 +34,12 @@ function nomeRelativo(alvo, raiz) {
  * nomes de tamanhos diferentes, [ok] e [NÃO ENCONTRADO] espalhados pela tela
  * são bem mais difíceis de varrer do que empilhados.
  */
+// "Para Protocolar:" tem 16 caracteres — a coluna precisa de 17 para que mesmo
+// o rótulo mais longo fique com um espaço antes do valor.
+const ROTULO_ESTRUTURA = 17;
+
 function linhaEstrutura(nome, alvo, raiz, largura, extra = null) {
-  const rot = `      ${nome.padEnd(ROTULO)}`;
+  const rot = `      ${nome.padEnd(ROTULO_ESTRUTURA)}`;
 
   if (!alvo?.configurado) {
     return `${rot}${chalk.yellow('não configurado')}`;
@@ -116,6 +120,7 @@ function secaoEscritorios(s, linhas) {
 
     const alvos = [
       ['Fila:', fila, contagem],
+      ['Para Protocolar:', e.estrutura.para_protocolar, null],
       ['Modelos:', e.estrutura.modelos, null],
       ['Timbrado:', e.estrutura.timbrado, null],
       ['Protocolados:', e.estrutura.protocolados, null],

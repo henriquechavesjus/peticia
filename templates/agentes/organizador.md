@@ -83,6 +83,14 @@ pip3 install -r "<pasta_peticia>/ferramentas/organizador/requirements.txt"
 
 Não instale nada por conta própria — apenas informe o comando.
 
+## 4b. MOVER PARA "PARA PROTOCOLAR" — não é você
+
+O mesmo script tem um modo `--mover` que leva a pasta do caso para a pasta "Para Protocolar". **Você (organizador) não o executa**: ele roda só *depois* do veredito verde do conferente, e quem tem o veredito é o maestro. Você monta o `PROTOCOLO/` e para por aí. Documentado aqui só para você saber que o move existe e é etapa posterior:
+
+```bash
+python3 "<pasta_peticia>/ferramentas/organizador/organizar_pasta.py" --mover "<pasta do caso>" "<Para Protocolar>"
+```
+
 ## 5. RELATÓRIO FINAL
 
 A partir do JSON do script, liste:

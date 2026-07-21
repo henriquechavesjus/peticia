@@ -76,6 +76,15 @@ Para cada pasta, na ordem:
 
 **d) conferente** — invoque para o veredito. Registre o resultado: 🟢 pronta, 🟡 pronta com alerta, ou 🔴 bloqueada.
 
+**e) mover para "Para Protocolar"** — só quando o veredito é 🟢 (ou 🟡 que não bloqueia) **e** `escritorios[].estrutura.para_protocolar` está preenchido no `escritorio.json`. O conferente roda antes desta etapa, então é você (maestro) que aciona o move depois de ver o verde:
+
+```bash
+python3 "<pasta_peticia>/ferramentas/organizador/organizar_pasta.py" --mover "<pasta do caso>" "<estrutura.para_protocolar>"
+```
+
+- Se `para_protocolar` é `null` (não configurado) → **não mova**: a pasta fica na fila, o aluno protocola e organiza manualmente.
+- Se o move falhar (ex.: já existe pasta de mesmo nome no destino) → registre e siga; não trava o lote.
+
 **Bloqueio em qualquer etapa** → registra, não trava o lote: segue para a próxima pasta.
 
 ## 6. PROGRESSO EM TEMPO REAL
@@ -101,10 +110,14 @@ Se o aluno pediu uma etapa só, invoque **apenas** aquele agente, sem o pipeline
 
 Ao terminar um lote, resuma:
 
+Conclua o resumo dizendo para onde as peças prontas foram:
+- Se `para_protocolar` está configurado: `3 peças prontas movidas para "Para Protocolar"`.
+- Se não: `3 peças prontas — ficam em "<fila>" aguardando protocolo`.
+
 ```
 PROCESSAMENTO CONCLUÍDO
 
-Prontas para protocolo (3):
+Prontas para protocolo (3) — movidas para "Para Protocolar":
   ✓ Maria Silva x Nubank
   ✓ Carlos Souza x Facebook
   ✓ Ana Lima x Neon
