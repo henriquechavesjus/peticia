@@ -1,70 +1,75 @@
 # peticia
 
-CLI para advogados automatizarem a geração de petições jurídicas com Claude Code e agentes.
+Gere petições iniciais no padrão do seu escritório, conversando em português com um agente de IA.
 
-> **Em desenvolvimento.** Esta versão publica apenas o esqueleto do CLI: os comandos
-> aparecem no `--help`, mas ainda não executam nada.
+## O que é
 
-## Requisitos
+O peticia instala e coordena um time de agentes do Claude Code que redigem, revisam, organizam e conferem petições iniciais de Direito do Consumidor — sempre a partir dos seus modelos, do seu timbrado e das regras do seu escritório. Você configura uma vez; depois, digita `peticia` e pede em linguagem natural o que precisa ("faça a próxima inicial", "processe a fila do escritório"), e o agente maestro conduz o trabalho do começo ao protocolo.
 
-- Node.js 20 ou superior
-- Claude Code instalado e autenticado
-- macOS ou Windows
+## Como usar
 
-## Instalação
+**1. Instalar** (precisa de Node.js 20+ e do [Claude Code](https://docs.claude.com/en/docs/claude-code)):
 
 ```
 npm install -g peticia
 ```
 
-## Uso
-
-O peticia tem duas superfícies.
-
-**Uso diário** — você digita apenas `peticia` e conversa em linguagem natural.
-O agente maestro decide o que fazer a partir do seu pedido.
+**2. Ativar** — uma vez, com o e-mail da sua licença:
 
 ```
-$ peticia
+peticia ativar seu@email.com
 ```
 
-**Setup** — os comandos técnicos, usados poucas vezes.
+Isso cria a pasta `~/peticia/`, instala os agentes e conecta o Claude Code a eles.
+
+**3. Configurar seu escritório** — uma vez:
+
+```
+peticia configurar
+```
+
+Um assistente pergunta onde estão suas pastas (fila de entrada, modelos, protocolados), os dados do advogado (nome, OABs por estado), a formatação padrão e, opcionalmente, uma chave OpenAI para a revisão automática.
+
+**4. Usar no dia a dia:**
+
+```
+peticia
+```
+
+Abre o Claude Code já conversando com o maestro. A partir daí é português: peça a próxima inicial, um lote da fila, ou uma revisão avulsa.
+
+## Os agentes
+
+A ativação instala cinco agentes em `~/peticia/agentes/` — e eles passam a ser seus: edite o texto de cada um como quiser, o peticia não sobrescreve suas alterações.
+
+| Agente | Papel |
+| --- | --- |
+| `maestro` | Interpreta o pedido e coordena os demais |
+| `redator` | Redige a inicial a partir da pasta do caso |
+| `revisor-gpt` | Segunda opinião via OpenAI (opcional) |
+| `organizador` | Monta a pasta `PROTOCOLO/` |
+| `conferente` | Veredito final antes do protocolo |
+
+## O que você precisa
+
+- Node.js 20 ou superior
+- [Claude Code](https://docs.claude.com/en/docs/claude-code) instalado e autenticado
+- macOS ou Windows
+- Acesso ao peticia (pelo curso ou por código de ativação)
+
+## Comandos
 
 | Comando | O que faz |
 | --- | --- |
-| `peticia ativar` | Instala o peticia e ativa a licença neste dispositivo |
-| `peticia configurar` | Configura escritórios, dados do advogado e chaves de API |
-| `peticia status` | Mostra o estado da instalação, da licença e dos agentes |
-| `peticia atualizar` | Busca novidades e atualiza as partes gerenciadas pelo peticia |
-| `peticia editar` | Abre a pasta `~/peticia` para editar agentes e workflows |
-| `peticia plugin` | Lista e instala plugins opcionais |
-
-## O que a ativação cria
-
-```
-~/peticia/
-├── agentes/        maestro, redator, revisor, organizador, conferente, transcritor
-├── workflows/      pipelines de processamento
-├── lib/            motor de formatação das peças
-├── ferramentas/    integrações opcionais
-├── config/         suas configurações (permissões restritas)
-└── COMO-USAR.md
-```
-
-Além disso, um link simbólico `~/.claude/agents/peticia` aponta para `~/peticia/agentes/`,
-que é onde o Claude Code procura agentes.
-
-Depois da instalação **os agentes são seus**: o peticia nunca sobrescreve o que você
-editou. Novidades chegam como plugins, que você instala se quiser.
-
-## Desenvolvimento
-
-```
-npm install
-npm link          # disponibiliza o comando `peticia` localmente
-peticia --help
-```
+| `peticia` | Abre o Claude Code para trabalhar |
+| `peticia ativar EMAIL` | Ativa a licença e instala os agentes |
+| `peticia configurar` | Configura escritório, advogado e formatação |
+| `peticia status` | Mostra o estado da instalação |
 
 ## Licença
 
-Uso restrito a licenciados.
+MIT — veja o arquivo [LICENSE](LICENSE).
+
+## Autor
+
+Dr. Henrique Chaves Bernardo — OAB/BA 37.189

@@ -1,7 +1,7 @@
 {
   "name": "peticia",
   "version": "0.1.0",
-  "description": "CLI para advogados automatizarem a geração de petições jurídicas com Claude Code e agentes.",
+  "description": "CLI que instala e orquestra agentes Claude Code para gerar petições jurídicas no padrão do escritório do advogado.",
   "type": "module",
   "bin": {
     "peticia": "bin/peticia.js"
@@ -11,7 +11,8 @@
     "bin",
     "src",
     "templates",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
@@ -21,14 +22,29 @@
     "peticia": "node bin/peticia.js"
   },
   "keywords": [
+    "jurídico",
+    "advogado",
+    "petição",
+    "claude-code",
+    "ia",
+    "automação",
     "cli",
-    "juridico",
-    "peticoes",
-    "advocacia",
-    "claude-code"
+    "brasil",
+    "consumidor"
   ],
-  "license": "UNLICENSED",
-  "private": false,
+  "author": {
+    "name": "Henrique Chaves Bernardo",
+    "email": "henrique@henriquechaves.adv.br"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/henriquechavesjus/peticia.git"
+  },
+  "bugs": {
+    "url": "https://github.com/henriquechavesjus/peticia/issues"
+  },
+  "homepage": "https://github.com/henriquechavesjus/peticia#readme",
   "publishConfig": {
     "access": "public"
   },
