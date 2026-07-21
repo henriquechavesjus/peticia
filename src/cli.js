@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 
+import { peticiaDiario } from './commands/peticia.js';
 import { opcaoSandbox, registrarComandos } from './commands/index.js';
 import { DESCRICAO, NODE_MINIMO, NOME } from './constants.js';
 import { erro, info } from './lib/ui.js';
@@ -20,7 +21,7 @@ function checarNode() {
  * não bateu com um subcomando — então rejeitamos explicitamente, senão um erro
  * de digitação sairia com código 0.
  */
-function acaoPadrao(_opcoes, comando) {
+async function acaoPadrao(_opcoes, comando) {
   const [desconhecido] = comando.args;
   if (desconhecido) {
     erro(`comando desconhecido: "${desconhecido}"`);
@@ -28,9 +29,8 @@ function acaoPadrao(_opcoes, comando) {
     process.exit(1);
   }
 
-  // Uso diário: conversa com o Claude Code. Ainda não implementado.
-  info('O modo de conversa com o Claude Code ainda não foi implementado.');
-  info(`Veja os comandos disponíveis com: ${NOME} --help`);
+  // Uso diário: valida o setup e abre o Claude Code com o maestro.
+  await peticiaDiario({ sandbox: Boolean(comando.opts().sandbox) });
 }
 
 /**
@@ -73,10 +73,12 @@ export async function main(argv) {
       'after',
       `
 Uso diário:
-  $ ${NOME}                  abre a conversa com o Claude Code
+  ${NOME}                   abre o Claude Code para trabalhar
 
-Primeira vez:
-  $ ${NOME} configurar       cria a pasta e o escritorio.json
+Primeira vez (nesta ordem):
+  ${NOME} ativar EMAIL      ativa sua licença e instala os agentes
+  ${NOME} configurar        configura seu escritório
+  ${NOME} status            mostra o estado da instalação
 `,
     )
     .action(acaoPadrao);
