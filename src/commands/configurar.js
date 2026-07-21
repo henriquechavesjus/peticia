@@ -23,6 +23,7 @@ import { criarEstrutura, escreverPonteiro, proteger } from '../lib/instalacao.js
 import {
   arquivoEnv,
   arquivoEscritorio,
+  arquivoInstalacao,
   normalizarCaminhoColado,
   pastaPadrao,
 } from '../lib/paths.js';
@@ -46,8 +47,35 @@ const transformarCaminho = (valor, a, b) => {
 
 // --- etapa 0: onde criar a pasta ---
 
+/**
+ * Se o `ativar` já rodou, ele criou a pasta e gravou o ponteiro. Devolve essa
+ * pasta para o `configurar` não perguntar de novo onde criá-la.
+ *
+ * Checa `agentes_instalados`, não só a existência do ponteiro: o próprio
+ * `configurar` também escreve o ponteiro (com pasta_peticia, sem
+ * agentes_instalados). Só o `ativar` preenche agentes_instalados — é o que
+ * distingue "ativou" de "só configurou antes".
+ */
+export async function pastaDaAtivacao(opcoes = {}) {
+  const arquivo = arquivoInstalacao(opcoes);
+  if (!(await fs.pathExists(arquivo))) return null;
+
+  const dados = await fs.readJson(arquivo).catch(() => null);
+  if (dados?.pasta_peticia && dados.agentes_instalados?.length > 0) {
+    return dados.pasta_peticia;
+  }
+  return null;
+}
+
 async function etapaLocal({ sandbox }) {
   secao('local da pasta');
+
+  // Ativou? Usa a pasta que o ativar escolheu — não pergunta de novo.
+  const jaAtivado = await pastaDaAtivacao({ sandbox });
+  if (jaAtivado) {
+    passo(`Usando a pasta criada na ativação: ${jaAtivado}`);
+    return jaAtivado;
+  }
 
   if (sandbox) {
     const destino = pastaPadrao({ sandbox });
