@@ -170,4 +170,10 @@ diretório temporário (via override `base` em `baseHome`). O que exige rede
   exercitado com os subagentes reais).
 - Validação periódica com Supabase (ping a cada 7 dias), ativação por código.
 
-Ver `docs/DECISOES.md` para o registro das decisões e seus porquês.
+## Documentação
+
+- `docs/GUIA-DO-DESENVOLVEDOR.md` — guia didático, do zero, para qualquer nível
+  (conceitos, mapa de arquivos, fluxos com diagramas, glossário).
+- `docs/DECISOES.md` — registro das decisões e seus porquês (não re-litigar).
+- `docs/HISTORICO.md` — a construção passo a passo (cada commit como um passo).
+- `README.md` — documentação pública, para o usuário final.

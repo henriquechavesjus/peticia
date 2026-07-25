@@ -66,6 +66,13 @@ A ativação instala cinco agentes em `~/peticia/agentes/` — e eles passam a s
 | `peticia configurar` | Configura escritório, advogado e formatação |
 | `peticia status` | Mostra o estado da instalação |
 
+## Documentação
+
+- [Guia do desenvolvedor](docs/GUIA-DO-DESENVOLVEDOR.md) — entenda o projeto do zero (para todos os níveis).
+- [Registro de decisões](docs/DECISOES.md) — por que cada escolha foi feita.
+- [Histórico](docs/HISTORICO.md) — a construção passo a passo.
+- [CLAUDE.md](CLAUDE.md) — resumo técnico denso.
+
 ## Licença
 
 MIT — veja o arquivo [LICENSE](LICENSE).
