@@ -146,13 +146,59 @@ conhecimento não se perder entre sessões.
 A documentação didática (`GUIA-DO-DESENVOLVEDOR.md`) e este histórico, para que
 qualquer pessoa — mesmo sem experiência — consiga entender o projeto inteiro.
 
+### Passo 20 — A auditoria antes de publicar · 25/07
+
+Antes de apertar o botão do `npm publish`, uma varredura do que iria para dentro
+do pacote e do que a chave pública abre. O pacote estava limpo: nenhum `.env`,
+nenhum token, nenhuma chave privada — em nenhum commit do histórico.
+
+Duas coisas apareceram. Uma era sujeira: `@supabase/supabase-js` estava
+declarado como dependência mas **nunca era importado** — o CLI fala com o
+servidor por `fetch` puro. Saiu.
+
+A outra era real. A Edge Function respondia `email_nao_cadastrado` para quem não
+era aluno e outra coisa para quem era. Como a chave anon é pública por desenho
+(vai dentro do pacote), qualquer pessoa podia testar uma lista de e-mails e
+montar a relação de quem comprou o curso. Não dava acesso a nada — mas expunha
+os alunos.
+
+### Passo 21 — Fechar a enumeração · 25/07
+
+Três correções que só funcionam juntas: uma resposta única `acesso_negado` para
+todos os casos de recusa, tempo de resposta constante de 2 segundos (senão o
+relógio conta o que a resposta calou) e um limite de 10 chamadas por hora por
+IP.
+
+O limite é a parte com armadilha. A versão óbvia — ler o contador, comparar,
+incrementar — deixa duas chamadas simultâneas lerem o mesmo número e passarem
+juntas. A versão correta faz tudo numa instrução só, dentro do banco. Testado
+com 30 conexões em paralelo: exatamente 10 passam.
+
+E a própria correção quase abriu um buraco novo: a função precisa de poderes
+elevados para escrever na tabela, e o Postgres deixa qualquer um chamar funções
+assim por padrão. Sem revogar isso, a chave pública inflaria o contador de
+qualquer IP.
+
+### Passo 22 — Publicado · 25/07
+
+Repositório tornado público, SQL aplicado, função em produção, verificação
+contra o servidor real: 10 chamadas passam, a 11ª bloqueia, todas em ~2,3s.
+
+O `npm publish` foi recusado na primeira tentativa — o npm passou a **exigir
+2FA** para publicar. Ativado o 2FA por passkey, apareceu o detalhe: passkey não
+gera código de 6 dígitos, e o `--otp` precisa de um. A saída foi um recovery
+code.
+
+`peticia@0.1.0` no ar, tag `v0.1.0` no GitHub.
+
 ---
 
 ## O estado hoje
 
-- **19 passos**, 105 testes passando, produto funcionalmente completo.
+- **22 passos**, 108 testes passando, **publicado no npm** em 25/07/2026.
 - Os 5 agentes instalados e conectados; os 4 comandos funcionando.
-- **Falta para lançar**: um teste manual no Mac rodando o fluxo real, tornar o
-  repositório público, e o `npm publish`.
+- O backend endurecido contra enumeração de e-mails e verificado em produção.
 - **Maior lacuna de verificação**: o comportamento dos agentes rodando de
-  verdade (o pipeline nunca foi exercitado ponta a ponta com a IA real).
+  verdade (o pipeline nunca foi exercitado ponta a ponta com a IA real). Em
+  segundo lugar, o fluxo de **sucesso** do `ativar`/`configurar`, que nunca
+  rodou de ponta a ponta — só os caminhos de erro.

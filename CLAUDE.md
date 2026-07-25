@@ -14,7 +14,7 @@ Duas experiências:
 
 ```bash
 npm install          # dependências
-npm test             # suite (node --test, 105 testes)
+npm test             # suite (node --test, 108 testes)
 npm link             # disponibiliza o comando `peticia` localmente
 npm pack --dry-run   # confere o que iria para o npm (sem publicar)
 ```
@@ -145,13 +145,56 @@ canonizado (`37189`, `37-189`, `37.189` → todos `37.189`); exibido como
   desenho (role `anon`). A `service_role` vive só na Edge Function. Nenhum
   `.env` real vai para o pacote — só `.env.example`. Um teste
   (`test/instalar-templates.test.js`) FALHA se qualquer `.env` ou `__pycache__`
-  entrar em `templates/`.
+  entrar em `templates/`. A anon key só é segura porque **toda** tabela tem RLS
+  restritiva: verificado de fora com a chave do pacote, `INSERT` devolve `42501`
+  em todas elas. Se algum dia uma tabela nova entrar sem RLS, a chave publicada
+  passa a abri-la para o mundo.
 - **inquirer** fixado em `^12`: as versões 13/14 exigem Node ≥20.12/20.17
   (importam `styleText`) e quebram no Node 20.11.
 - **Agente é prompt, não código**: `test/prompts-agentes.test.js` só garante que
   as instruções decididas continuam no .md (rede contra regressão), não que o
   LLM se comporta assim. O comportamento real dos agentes nunca foi testado
   ponta a ponta — é a maior lacuna de verificação do projeto.
+
+## O backend (`supabase/`, fora do pacote npm)
+
+Não é distribuído: o `files[]` do `package.json` é allowlist e deixa `supabase/`
+de fora. Mas é público no GitHub — a lógica de defesa é conhecida, e isso é
+intencional (a proteção está no controle, não no segredo dele).
+
+```
+supabase/functions/ativar/index.ts   ← a Edge Function (Deno)
+supabase/migrations/*.sql            ← tabela + função de rate limit
+```
+
+**Três defesas contra enumeração de e-mails, que só funcionam juntas.** A
+`ativar` é chamada com a anon key, que qualquer pessoa extrai do pacote; sem
+elas, dava para varrer uma lista de e-mails e descobrir quem é aluno.
+
+1. **Resposta única `acesso_negado`** para e-mail inexistente, suspenso,
+   cancelado, vencido e limite de máquinas estourado — indistinguíveis byte a
+   byte. `validade_ate` **não** acompanha a resposta: a data denunciaria que o
+   e-mail existe.
+2. **Tempo constante de 2s** em toda resposta (o wrapper `responder()`),
+   inclusive `rate_limit` e `erro_interno` — um caminho de erro rápido é, ele
+   próprio, o sinal que o corpo calou. O timeout do CLI é 15s.
+3. **Rate limit de 10/h por IP**, antes de qualquer consulta. O incremento é um
+   único `INSERT ... ON CONFLICT` dentro de `consumir_rate_limit()`: ler,
+   comparar e incrementar separadamente deixaria duas requisições simultâneas
+   passarem pelo mesmo contador.
+
+Duas escolhas que parecem erro e não são: IP ausente cai num bucket
+compartilhado em vez de ser negado (negar transformaria uma mudança de header da
+plataforma em bloqueio total), e a falha da RPC de rate limit é **aberta** (com o
+banco fora, a busca do usuário também falha para todos e não há sinal a
+extrair).
+
+Como `limite_excedido` virou `acesso_negado`, máquina já conhecida do usuário
+reativa direto e máquina nova que não cabe é recusada como se o e-mail não
+existisse. O motivo `limite_excedido` deixou de ser alcançável — os cases
+antigos seguem no CLI só para cobrir descompasso entre as duas pontas.
+
+Mexer numa dessas defesas sem as outras reabre a enumeração.
 
 ## Testes (`test/`, `node --test`)
 
@@ -163,12 +206,22 @@ diretório temporário (via override `base` em `baseHome`). O que exige rede
 
 ## O que falta
 
-- `npm publish` — preparado, **não publicado**. Pendências: teste manual no Mac
-  e tornar o repo público (senão os links do npm dão 404).
+**Publicado em 25/07/2026**: `peticia@0.1.0` está no npm
+(https://www.npmjs.com/package/peticia), o repo é público e a tag `v0.1.0`
+marca o release. Publicar exige 2FA — a conta usa passkeys, que não geram
+código TOTP, então o `--otp` é atendido com um **recovery code**.
+
 - Comandos `atualizar`, `desativar`, `editar`, `plugin` — stubs.
 - Verificação end-to-end dos agentes rodando de verdade (o pipeline nunca foi
   exercitado com os subagentes reais).
+- O **fluxo de sucesso** do `ativar`/`configurar` nunca rodou ponta a ponta.
+  Testado: instalação do tarball, `--help`, `status` e o caminho de erro do
+  `ativar` (incluindo `acesso_negado` e `rate_limit` contra a função real).
 - Validação periódica com Supabase (ping a cada 7 dias), ativação por código.
+- **Enumeração por rotação de IP** — o rate limit é só por IP. Se virar problema
+  real, o próximo degrau é limitar também por e-mail consultado.
+- A **anon key não tem rota de rotação**: está hardcoded em `src/lib/supabase.js`
+  e trocá-la quebra toda instalação já distribuída até o aluno atualizar.
 
 ## Documentação
 

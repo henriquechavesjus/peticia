@@ -46,7 +46,7 @@ Você precisa do **Node.js 20 ou superior**. Confira com `node --version`.
 git clone https://github.com/henriquechavesjus/peticia.git
 cd peticia
 npm install       # baixa as dependências (commander, inquirer, chalk, ...)
-npm test          # roda os 105 testes — todos devem passar
+npm test          # roda os 108 testes — todos devem passar
 npm link          # cria o comando `peticia` global apontando para este código
 peticia --help    # confere que funcionou
 ```
@@ -250,6 +250,22 @@ cuidado) e `=== ESTILO ===` (preferências que o aluno pode ajustar).
 - `supabase/functions/ativar/index.ts` — a **Edge Function**: código que roda no
   servidor Supabase e valida a licença. **Não** vai para o pacote npm (fica só
   no repositório).
+- `supabase/migrations/*.sql` — o que precisa existir no banco para a função
+  trabalhar (hoje: a tabela e a função do limite de chamadas). Também fora do
+  pacote.
+
+> **Por que o servidor decide, e não o CLI?** A chave que o CLI carrega é
+> pública — está dentro do pacote que qualquer pessoa baixa. Então ela não pode
+> dar poder nenhum: quem decide quem tem acesso é a Edge Function, que roda no
+> servidor com uma chave secreta que ninguém vê. Se a decisão fosse no CLI,
+> bastaria editar o arquivo para se dar acesso.
+>
+> Uma consequência menos óbvia: como qualquer pessoa pode chamar a função, ela
+> não pode nem *responder demais*. Se dissesse "esse e-mail não existe" para uns
+> e "esse está vencido" para outros, daria para descobrir quem é aluno testando
+> e-mails. Por isso toda recusa devolve exatamente a mesma resposta, sempre no
+> mesmo tempo, e um mesmo computador só pode tentar 10 vezes por hora. Detalhes
+> em `CLAUDE.md`, seção "O backend".
 - `test/` — 10 arquivos de teste (ver seção 8).
 
 ---
@@ -370,7 +386,7 @@ Duas coisas que economizam bugs:
 
 ## 8. Como os testes funcionam
 
-Rode com `npm test`. São **105 testes** em 10 arquivos, usando o *test runner*
+Rode com `npm test`. São **108 testes** em 10 arquivos, usando o *test runner*
 nativo do Node (`node --test`) — sem nenhuma biblioteca de teste extra.
 
 A ideia central: **testar a lógica sem depender do mundo real.**

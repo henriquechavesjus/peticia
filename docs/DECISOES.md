@@ -69,9 +69,52 @@ re-litigadas. Em ordem aproximada de quando surgiram.
   na mesma máquina, diferente entre máquinas, não reversível para a pessoa.
 - **Data de validade formatada em UTC.** `2026-06-30T00:00:00Z` em UTC-3 viraria
   29/06 — a licença pareceria vencer um dia antes. Pego por teste.
-- **A Edge Function passou a devolver `validade_ate`** no motivo
-  `validade_expirada` (antes não devolvia, e o CLI não tinha como dizer QUANDO
-  venceu). **Requer deploy da função.**
+- ~~**A Edge Function passou a devolver `validade_ate`** no motivo
+  `validade_expirada`~~ — **revertido em 25/07/2026.** A data denunciava que o
+  e-mail existe no banco, que é exatamente o que o agrupamento em
+  `acesso_negado` foi feito para esconder. Dizer ao aluno QUANDO venceu passou a
+  ser trabalho do suporte. Um teste garante que a mensagem do CLI não cita data
+  nem nomeia o caso, mesmo se o servidor mandar `validade_ate` junto.
+
+### O endurecimento contra enumeração (25/07/2026)
+
+Uma auditoria antes do `npm publish` mostrou que a `ativar` distinguia e-mail
+cadastrado de não cadastrado. Como a anon key é pública por desenho, qualquer
+pessoa podia varrer e-mails e descobrir quem é aluno — privacidade dos alunos,
+não invasão do sistema. Três defesas, que **só funcionam juntas**:
+
+- **Motivo único `acesso_negado`** agrupa e-mail inexistente, suspenso,
+  cancelado, vencido e limite estourado. Antes o corpo da resposta dizia qual
+  era.
+- **Tempo constante de 2s** em toda resposta, inclusive nos erros. Sem isso, o
+  relógio contaria o que o corpo calou: uma busca que falha cedo é mais rápida
+  que uma que percorre status, validade e módulos.
+- **Rate limit de 10/h por IP.** Atômico via `INSERT ... ON CONFLICT` numa função
+  `SECURITY DEFINER` — a versão ingênua (ler, comparar, incrementar) deixa duas
+  requisições simultâneas lerem o mesmo contador e ambas passarem. Verificado:
+  30 conexões em paralelo resultam em exatamente 10 permitidas.
+
+Três escolhas dentro disso que parecem erro e não são:
+
+- **IP ausente vira bucket compartilhado, não recusa.** Negar transformaria uma
+  mudança de header da plataforma em bloqueio total das ativações; assim o pior
+  caso é esses casos raros dividirem uma cota.
+- **A falha da RPC de rate limit é aberta.** Com o banco fora, a busca do usuário
+  também falha para todos e não há sinal a extrair; fechar trocaria
+  instabilidade por indisponibilidade.
+- **`REVOKE EXECUTE` na função.** `SECURITY DEFINER` roda com os poderes do dono
+  e o Postgres concede execução a `PUBLIC` por padrão — sem o revoke, a anon key
+  chamaria a RPC direto e inflaria o bucket de qualquer IP. A correção teria
+  aberto um buraco novo.
+
+`limite_excedido` **deixou de ser alcançável**: máquina conhecida reativa direto,
+máquina nova que não cabe recebe `acesso_negado`. Manter esse motivo distinto
+teria confirmado ao atacante que o e-mail é de um aluno. Os cases antigos
+continuam no `mensagemDeErro` de propósito — cobrem o descompasso entre publicar
+um CLI e atualizar a função, nos dois sentidos.
+
+O que **não** foi resolvido: rotação de IP contorna o limite. Se virar problema
+real, limitar também por e-mail consultado.
 
 ## Agentes e templates
 

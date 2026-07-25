@@ -1,5 +1,8 @@
 # peticia
 
+[![npm](https://img.shields.io/npm/v/peticia)](https://www.npmjs.com/package/peticia)
+[![license](https://img.shields.io/npm/l/peticia)](LICENSE)
+
 Gere petições iniciais no padrão do seu escritório, conversando em português com um agente de IA.
 
 ## O que é
@@ -21,6 +24,24 @@ peticia ativar seu@email.com
 ```
 
 Isso cria a pasta `~/peticia/`, instala os agentes e conecta o Claude Code a eles.
+
+<details>
+<summary>Se a ativação não funcionar</summary>
+
+**"Este e-mail ainda não tem acesso ao peticia."** — uma resposta única para
+vários casos: e-mail não cadastrado, digitado errado, acesso suspenso ou
+cancelado, licença vencida, ou limite de computadores atingido. Não dizemos qual
+é de propósito — se a mensagem fosse específica, qualquer pessoa poderia testar
+e-mails para descobrir quem é aluno. Fale com o suporte, que identifica o caso.
+
+**"Muitas tentativas em pouco tempo."** — o limite é de 10 tentativas por hora,
+por conexão de internet. Espere e tente de novo. Se você está num escritório onde
+várias pessoas ativam no mesmo dia, a cota é compartilhada pela rede.
+
+A ativação leva cerca de 2 segundos mesmo quando falha — isso é proposital, não
+lentidão.
+
+</details>
 
 **3. Configurar seu escritório** — uma vez:
 
