@@ -41,6 +41,29 @@ function dataBr(iso) {
  */
 export function mensagemDeErro(resposta) {
   switch (resposta?.motivo) {
+    // Resposta única do servidor para e-mail inexistente, acesso suspenso,
+    // cancelado, vencido e limite de máquinas estourado. O servidor não nos
+    // conta qual dos cinco é — de propósito: distinguir permitiria a qualquer
+    // pessoa varrer e-mails e descobrir quem é aluno. A mensagem precisa,
+    // portanto, servir para todos eles sem prometer nada.
+    case 'acesso_negado':
+      return [
+        'Este e-mail ainda não tem acesso ao peticia.',
+        'Verifique com o suporte se você é aluno do curso',
+        'ou possui código de ativação válido.',
+      ];
+
+    case 'rate_limit':
+      return [
+        'Muitas tentativas em pouco tempo.',
+        'Aguarde alguns minutos e tente novamente.',
+      ];
+
+    // --- Motivos antigos -----------------------------------------------
+    // O servidor agrupou todos em `acesso_negado`, mas os cases continuam
+    // aqui: cobrem a janela entre publicar um CLI e atualizar a Edge Function
+    // (e o caminho inverso). Sem eles, qualquer descompasso entre as duas
+    // pontas jogaria o aluno na mensagem genérica do fallback.
     case 'email_nao_cadastrado':
       return [
         'Este e-mail ainda não tem acesso.',

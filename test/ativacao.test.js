@@ -37,6 +37,32 @@ describe('emailValido', () => {
 });
 
 describe('mensagemDeErro', () => {
+  it('acesso negado serve para os cinco casos agrupados', () => {
+    const m = mensagemDeErro({ motivo: 'acesso_negado' }).join(' ');
+    assert.match(m, /ainda não tem acesso ao peticia/);
+    assert.match(m, /suporte/);
+  });
+
+  it('acesso negado não vaza a validade nem o motivo real', () => {
+    // O servidor agrupa e-mail inexistente, suspenso, cancelado, vencido e
+    // limite estourado nesta única resposta. Se a mensagem citar a data de
+    // vencimento ou nomear o caso, o CLI reabre no texto a enumeração que a
+    // Edge Function fechou no protocolo.
+    const m = mensagemDeErro({
+      motivo: 'acesso_negado',
+      validade_ate: '2026-06-30T00:00:00.000Z',
+    }).join(' ');
+
+    assert.doesNotMatch(m, /2026|30\/06|venceu/);
+    assert.doesNotMatch(m, /suspenso|cancelado|máquinas/i);
+  });
+
+  it('rate limit pede para esperar', () => {
+    const m = mensagemDeErro({ motivo: 'rate_limit' }).join(' ');
+    assert.match(m, /Muitas tentativas/);
+    assert.match(m, /Aguarde/);
+  });
+
   it('e-mail não cadastrado', () => {
     const m = mensagemDeErro({ motivo: 'email_nao_cadastrado' }).join(' ');
     assert.match(m, /ainda não tem acesso/);

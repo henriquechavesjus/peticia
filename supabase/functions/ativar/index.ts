@@ -1,5 +1,18 @@
 // supabase/functions/ativar/index.ts
-// Edge Function: valida acesso do aluno e retorna módulos ativos
+// Edge Function: valida acesso do aluno e retorna módulos ativos.
+//
+// PRIVACIDADE: esta função é chamada com a anon key, que é pública por desenho
+// (vai dentro do pacote npm). Qualquer pessoa pode chamá-la com qualquer
+// e-mail. Três defesas, que só funcionam juntas:
+//
+//   1. Resposta única `acesso_negado` para todo caso de acesso negado, para o
+//      corpo da resposta não dizer se o e-mail existe.
+//   2. Tempo de resposta constante, para o relógio não dizer o que o corpo
+//      calou (uma busca que falha cedo é mais rápida que uma que percorre
+//      status, validade e módulos).
+//   3. Rate limit por IP, para varrer uma lista de e-mails não ser viável.
+//
+// Mexer em qualquer uma delas sem as outras reabre a enumeração.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -8,31 +21,86 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/** Tempo fixo de toda resposta. O timeout do CLI é 15s — cabe com folga. */
+const TEMPO_RESPOSTA_MS = 2000
+
+const RATE_LIMITE = 10
+const RATE_JANELA = '1 hour'
+
 Deno.serve(async (req) => {
-  // Preflight CORS
+  // Preflight não passa pelo tempo constante: não consulta nada, não tem o que
+  // vazar, e atrasá-lo só tornaria o CLI lento sem ganho nenhum.
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS })
   }
 
+  const t0 = Date.now()
+
+  /**
+   * Toda saída passa por aqui. Espera o que faltar para fechar
+   * TEMPO_RESPOSTA_MS; se a requisição já demorou mais que isso, responde na
+   * hora. Vale inclusive para `rate_limit` e `erro_interno`: um caminho de erro
+   * rápido é, ele próprio, um sinal de que o e-mail não existe.
+   */
+  const responder = async (body: unknown, status = 200) => {
+    const restante = TEMPO_RESPOSTA_MS - (Date.now() - t0)
+    if (restante > 0) await new Promise((r) => setTimeout(r, restante))
+
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+  }
+
+  /** A mesma resposta para: e-mail inexistente, suspenso, cancelado, vencido e
+   *  limite de máquinas estourado. Indistinguíveis byte a byte. */
+  const acessoNegado = () => responder({ ok: false, motivo: 'acesso_negado' }, 200)
+
   try {
-    // Cliente Supabase com service_role (poder total)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
+    // -----------------------------------------------------------------------
+    // 0. Rate limit — antes de qualquer consulta, para que nem o custo de uma
+    //    varredura recaia sobre o banco.
+    // -----------------------------------------------------------------------
+    const ip = ipDoRequest(req)
+
+    const { data: limite, error: erroLimite } = await supabase
+      .rpc('consumir_rate_limit', {
+        p_ip: ip,
+        p_limite: RATE_LIMITE,
+        p_janela: RATE_JANELA,
+      })
+
+    if (erroLimite) {
+      // Falha ABERTA de propósito. Se o banco está fora, a busca do usuário
+      // logo abaixo também falha e devolve erro_interno para todo mundo — não
+      // há sinal para o atacante extrair. Fechar aqui transformaria uma
+      // instabilidade do banco em bloqueio total de ativações.
+      console.error('rate limit indisponível, seguindo sem ele:', erroLimite)
+    } else if (limite?.[0] && limite[0].permitido === false) {
+      return await responder({ ok: false, motivo: 'rate_limit' }, 429)
+    }
+
+    // -----------------------------------------------------------------------
+    // 1. Payload
+    // -----------------------------------------------------------------------
     const body = await req.json()
     const { email, codigo, device_id, versao_cli, so } = body
 
-    // Validação básica de payload
     if (!device_id) {
-      return json({ ok: false, motivo: 'device_id_ausente' }, 400)
+      return await responder({ ok: false, motivo: 'device_id_ausente' }, 400)
     }
     if (!email && !codigo) {
-      return json({ ok: false, motivo: 'sem_identificacao' }, 400)
+      return await responder({ ok: false, motivo: 'sem_identificacao' }, 400)
     }
 
-    // 1. Buscar usuário por email
+    // -----------------------------------------------------------------------
+    // 2. Usuário
+    // -----------------------------------------------------------------------
     const identificador = email?.toLowerCase().trim()
 
     const { data: usuario, error: erroUsuario } = await supabase
@@ -43,32 +111,29 @@ Deno.serve(async (req) => {
 
     if (erroUsuario) {
       console.error('Erro ao buscar usuário:', erroUsuario)
-      return json({ ok: false, motivo: 'erro_interno' }, 500)
+      return await responder({ ok: false, motivo: 'erro_interno' }, 500)
     }
 
-    if (!usuario) {
-      return json({ ok: false, motivo: 'email_nao_cadastrado' }, 200)
-    }
+    if (!usuario) return await acessoNegado()
 
-    // 2. Checar status
-    if (usuario.status === 'suspenso') {
-      return json({ ok: false, motivo: 'suspenso' }, 200)
+    // 3. Status e validade — motivos diferentes para nós, resposta idêntica
+    //    para fora. A data do vencimento NÃO acompanha a resposta: ela
+    //    denunciaria que o e-mail existe.
+    if (usuario.status === 'suspenso' || usuario.status === 'cancelado') {
+      return await acessoNegado()
     }
-    if (usuario.status === 'cancelado') {
-      return json({ ok: false, motivo: 'cancelado' }, 200)
-    }
-
-    // 3. Checar validade
     if (usuario.validade_ate && new Date(usuario.validade_ate) < new Date()) {
-      // A data vai junto: sem ela o CLI não consegue dizer QUANDO venceu.
-      return json({
-        ok: false,
-        motivo: 'validade_expirada',
-        validade_ate: usuario.validade_ate,
-      }, 200)
+      return await acessoNegado()
     }
 
-    // 4. Checar/criar ativação para este dispositivo
+    // -----------------------------------------------------------------------
+    // 4. Dispositivo
+    //
+    // Máquina já conhecida deste usuário passa direto — é reativação, e o
+    // limite já foi cobrado quando ela foi registrada. Máquina nova é contada;
+    // se não couber, `acesso_negado`, o mesmo que um e-mail inexistente. É o
+    // que impede o "limite excedido" de confirmar que o e-mail é de um aluno.
+    // -----------------------------------------------------------------------
     const { data: ativacaoExistente } = await supabase
       .from('ativacoes')
       .select('id')
@@ -85,25 +150,16 @@ Deno.serve(async (req) => {
         .eq('ativo', true)
 
       if ((count ?? 0) >= usuario.max_dispositivos) {
-        return json({
-          ok: false,
-          motivo: 'limite_excedido',
-          max_dispositivos: usuario.max_dispositivos,
-        }, 200)
+        return await acessoNegado()
       }
 
       const { error: erroInsert } = await supabase
         .from('ativacoes')
-        .insert({
-          usuario_id: usuario.id,
-          device_id,
-          so,
-          versao_cli,
-        })
+        .insert({ usuario_id: usuario.id, device_id, so, versao_cli })
 
       if (erroInsert) {
         console.error('Erro ao criar ativação:', erroInsert)
-        return json({ ok: false, motivo: 'erro_interno' }, 500)
+        return await responder({ ok: false, motivo: 'erro_interno' }, 500)
       }
     } else {
       await supabase
@@ -112,7 +168,9 @@ Deno.serve(async (req) => {
         .eq('id', ativacaoExistente.id)
     }
 
-    // 5. Buscar módulos ativos
+    // -----------------------------------------------------------------------
+    // 5. Módulos
+    // -----------------------------------------------------------------------
     const { data: modulosCore } = await supabase
       .from('modulos_disponiveis')
       .select('id, nome')
@@ -142,7 +200,7 @@ Deno.serve(async (req) => {
         })),
     ]
 
-    // 6. Registrar ping
+    // 6. Ping
     await supabase.from('pings').insert({
       usuario_id: usuario.id,
       comando: 'ativar',
@@ -150,7 +208,7 @@ Deno.serve(async (req) => {
     })
 
     // 7. Sucesso
-    return json({
+    return await responder({
       ok: true,
       usuario: {
         nome: usuario.nome,
@@ -162,16 +220,25 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('Erro não capturado:', err)
-    return json({ ok: false, motivo: 'erro_interno' }, 500)
+    return await responder({ ok: false, motivo: 'erro_interno' }, 500)
   }
 })
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...CORS,
-      'Content-Type': 'application/json',
-    },
-  })
+/**
+ * IP do chamador. `x-forwarded-for` vem como "cliente, proxy1, proxy2" — o
+ * primeiro é o cliente.
+ *
+ * Sem cabeçalho, cai num bucket compartilhado em vez de negar: se a plataforma
+ * um dia parar de mandar o header, negar derrubaria TODAS as ativações de uma
+ * vez. Assim o pior caso é esses casos raros dividirem uma cota entre si.
+ */
+function ipDoRequest(req: Request): string {
+  const encaminhado = req.headers.get('x-forwarded-for')
+  const primeiro = encaminhado?.split(',')[0]?.trim()
+  if (primeiro) return primeiro
+
+  const real = req.headers.get('x-real-ip')?.trim()
+  if (real) return real
+
+  return 'desconhecido'
 }
