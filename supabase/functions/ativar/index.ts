@@ -142,6 +142,11 @@ Deno.serve(async (req) => {
       .eq('ativo', true)
       .maybeSingle()
 
+    // Guardado para o ping do passo 6. Os DOIS ramos abaixo têm de preenchê-lo:
+    // em regime, reativação é o caminho comum, e vincular só a máquina nova
+    // deixaria justamente o uso do dia a dia sem origem.
+    let ativacaoId: string | null = null
+
     if (!ativacaoExistente) {
       const { count } = await supabase
         .from('ativacoes')
@@ -153,15 +158,23 @@ Deno.serve(async (req) => {
         return await acessoNegado()
       }
 
-      const { error: erroInsert } = await supabase
+      // `.select('id').single()` no próprio insert: o id volta na mesma ida ao
+      // banco, sem round-trip extra.
+      const { data: ativacaoNova, error: erroInsert } = await supabase
         .from('ativacoes')
         .insert({ usuario_id: usuario.id, device_id, so, versao_cli })
+        .select('id')
+        .single()
 
       if (erroInsert) {
         console.error('Erro ao criar ativação:', erroInsert)
         return await responder({ ok: false, motivo: 'erro_interno' }, 500)
       }
+
+      ativacaoId = ativacaoNova?.id ?? null
     } else {
+      ativacaoId = ativacaoExistente.id
+
       await supabase
         .from('ativacoes')
         .update({ versao_cli, so })
@@ -183,12 +196,12 @@ Deno.serve(async (req) => {
       .eq('usuario_id', usuario.id)
       .eq('status', 'ativo')
 
-    const modulos = [
+    const candidatos = [
       ...(modulosCore ?? []).map(m => ({
         id: m.id,
         nome: m.nome,
         origem: 'core',
-        validade_ate: null,
+        validade_ate: null as string | null,
       })),
       ...(modulosContratados ?? [])
         .filter(m => !m.validade_ate || new Date(m.validade_ate) > new Date())
@@ -196,13 +209,32 @@ Deno.serve(async (req) => {
           id: m.modulo_id,
           nome: (m as any).modulos_disponiveis?.nome ?? m.modulo_id,
           origem: 'contratado',
-          validade_ate: m.validade_ate,
+          validade_ate: m.validade_ate as string | null,
         })),
     ]
+
+    // Dedup por id, PRIMEIRA ocorrência ganha — e como o core vem primeiro, é o
+    // core que ganha. Coerente: se o módulo é core, é de graça para todos, e um
+    // prazo contratado sobre um módulo core seria contradição de cadastro.
+    //
+    // Sem isto, quem tem em `modulos_do_usuario` os mesmos módulos que já são
+    // core recebe cada um DUAS vezes — o estado de todos os alunos hoje, já que
+    // os 5 módulos do catálogo são `incluso_core`. O CLI não deduplica (imprime
+    // `modulos.length` e a lista crua), então a tela de ativação anunciava
+    // "10 módulos liberados" com os 5 nomes repetidos.
+    //
+    // NÃO trocar por `new Map(candidatos.map(m => [m.id, m]))`: nessa forma o
+    // Map mantém a ÚLTIMA ocorrência e a regra se inverte em silêncio.
+    const porId = new Map<string, typeof candidatos[number]>()
+    for (const m of candidatos) {
+      if (!porId.has(m.id)) porId.set(m.id, m)
+    }
+    const modulos = [...porId.values()]
 
     // 6. Ping
     await supabase.from('pings').insert({
       usuario_id: usuario.id,
+      ativacao_id: ativacaoId,
       comando: 'ativar',
       versao_cli,
     })
